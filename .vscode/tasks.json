@@ -6,10 +6,7 @@
 		{
 			"type": "npm",
 			"script": "watch",
-			"problemMatcher": [
-                "$ts-webpack-watch",
-                "$tslint-webpack-watch"
-			],
+			"problemMatcher": "$tsc-watch",
 			"isBackground": true,
 			"presentation": {
 				"reveal": "never"
@@ -17,17 +14,9 @@
 			"group": {
 				"kind": "build",
 				"isDefault": true
-			}
-		},
-		{
-			"type": "npm",
-			"script": "test-watch",
-			"problemMatcher": "$tsc-watch",
-			"isBackground": true,
-			"presentation": {
-				"reveal": "never"
 			},
-			"group": "build"
+			"label": "npm: watch",
+			"detail": "tsc -watch -p ./"
 		}
 	]
 }
