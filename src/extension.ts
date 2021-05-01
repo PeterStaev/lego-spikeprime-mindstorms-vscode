@@ -9,22 +9,26 @@ import { Logger } from "./logger";
 import { Rpc } from "./rpc";
 import { getRandomString } from "./utils";
 
+declare type TypeQuickPickItem = vscode.QuickPickItem & { systemType: "python" | "scratch", type: "standard" | "advanced" };
+
 let rpc: Rpc;
 
 const writeEmitter = new vscode.EventEmitter<string>();
 const logger = new Logger(writeEmitter);
 let terminal: vscode.Terminal | null;
 let hubStatusBarItem: vscode.StatusBarItem;
-const programTypes: Array<vscode.QuickPickItem & { type: "python" | "scratch" }> = [
+const programTypes: TypeQuickPickItem[] = [
     {
         label: "Python (standard)",
         detail: "Works similar to python programs in the Mindstorms app. ",
-        type: "python",
+        type: "standard",
+        systemType: "python",
     },
     {
         label: "Python (advanced)",
-        detail: "This allows more advanced features like event notifications and async code executions. Has to follow specific program template. Refer to the readme for more details. ",
-        type: "scratch",
+        detail: "This allows more advanced features like event notifications and async code executions.\n\rHas to follow specific program template. Refer to the readme for more details. ",
+        type: "advanced",
+        systemType: "scratch",
     },
 ];
 
@@ -33,16 +37,11 @@ const enum Command {
     DisconnectFromHub = "lego-spikeprime-mindstorms-vscode.disconnectFromHub",
 }
 
-// this method is called when your extension is activated
-// your extension is activated the very first time the command is executed
 export function activate(context: vscode.ExtensionContext) {
     hubStatusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 1);
     hubStatusBarItem.show();
     updateHubStatusBarItem();
 
-    // The command has been defined in the package.json file
-    // Now provide the implementation of the command with registerCommand
-    // The commandId parameter must match the command field in package.json
     const connectToHubCommand = vscode.commands.registerCommand(Command.ConnectToHub, async () => {
         try {
             const ports = await serialport.list();
@@ -57,13 +56,7 @@ export function activate(context: vscode.ExtensionContext) {
                 location = selection.label;
                 context.globalState.update("lastLocation", location);
 
-                rpc = new Rpc(
-                    location,
-                    logger,
-                    async () => {
-                        await updateHubStatusBarItem();
-                    }
-                );
+                rpc = new Rpc(location, logger);
                 await vscode.window.withProgress(
                     {
                         location: vscode.ProgressLocation.Notification,
@@ -93,6 +86,8 @@ export function activate(context: vscode.ExtensionContext) {
             },
             () => rpc.close(),
         );
+
+        await updateHubStatusBarItem();
     });
 
     const uploadProgramCommand = vscode.commands.registerCommand("lego-spikeprime-mindstorms-vscode.uploadProgram", async () => {
@@ -104,35 +99,74 @@ export function activate(context: vscode.ExtensionContext) {
         try {
             await vscode.commands.executeCommand("workbench.action.files.save");
 
-            const typeSelection = await vscode.window.showQuickPick(programTypes);
+            const header = vscode.window.activeTextEditor?.document.lineAt(0).text;
+            let slotId: number = NaN;
+            let typeSelection: TypeQuickPickItem | undefined;
+            let isAutostartIn: boolean = false;
+
+            // Header sample:
+            // # LEGO type:advanced slot:3
+            if (header?.startsWith("# LEGO")) {
+                const split = header.split(/[:\s]/gi);
+                for (let loop = 0; loop < split.length; loop++) {
+                    const element = split[loop];
+
+                    if (element === "type") {
+                        typeSelection = programTypes.find((item) => item.type === split[loop + 1]);
+                    }
+
+                    if (element === "slot") {
+                        slotId = +split[loop + 1];
+                    }
+
+                    if (element === "autostart") {
+                        isAutostartIn = true;
+                    }
+                }
+            }
+
             if (!typeSelection) {
-                return;
+                typeSelection = await vscode.window.showQuickPick(programTypes);
+                if (!typeSelection) {
+                    return;
+                }
             }
 
-            const storageStatus = await rpc.sendMessage("get_storage_status");
-            const slots = storageStatus.slots;
-            const quickPickSlots: vscode.QuickPickItem[] = [];
-            for (let index = 0; index < 20; index++) {
-                quickPickSlots.push({
-                    label: index.toString(),
-                    description: slots[index] ? Buffer.from(slots[index].name, "base64").toString("utf-8") : "",
-                });
-            }
+            if (!slotId
+                || slotId < 0
+                || slotId > 19) {
+                const storageStatus = await rpc.sendMessage("get_storage_status");
+                const slots = storageStatus.slots;
+                const quickPickSlots: vscode.QuickPickItem[] = [];
+                for (let index = 0; index < 20; index++) {
+                    quickPickSlots.push({
+                        label: index.toString(),
+                        description: slots[index] ? Buffer.from(slots[index].name, "base64").toString("utf-8") : "",
+                    });
+                }
 
-            const slotSelection = await vscode.window.showQuickPick(quickPickSlots);
+                const slotSelection = await vscode.window.showQuickPick(quickPickSlots);
 
-            if (!slotSelection) {
-                return;
+                if (!slotSelection) {
+                    return;
+                }
+
+                slotId = +slotSelection.label;
             }
 
             await vscode.window.withProgress(
                 {
                     location: vscode.ProgressLocation.Notification,
-                    title: `Uploading Program to Hub (Slot ${slotSelection.label})...`,
+                    title: `Uploading Program to Hub (Slot #${slotId})...`,
                 },
-                (progress) => performUploadProgram(+slotSelection.label, typeSelection.type, progress),
+                (progress) => performUploadProgram(+slotId, typeSelection!.systemType, progress),
             );
-            await vscode.window.showInformationMessage("Program uploaded!");
+
+            vscode.window.showInformationMessage("Program uploaded!");
+
+            if (isAutostartIn) {
+                void rpc.sendMessage("program_execute", { slotid: slotId });
+            }
         }
         catch (e) {
             vscode.window.showErrorMessage(e);
@@ -162,12 +196,13 @@ export function activate(context: vscode.ExtensionContext) {
                 return;
             }
 
+            const slotId = +slotSelection.label;
             await vscode.window.withProgress(
                 {
                     location: vscode.ProgressLocation.Notification,
-                    title: `Starting Program in Slot #${slotSelection.label}...`,
+                    title: `Starting Program in Slot #${slotId}...`,
                 },
-                () => rpc.sendMessage("program_execute", { slotid: +slotSelection.label }),
+                () => rpc.sendMessage("program_execute", { slotid: slotId }),
             );
         }
         catch (e) {
@@ -197,14 +232,16 @@ export function activate(context: vscode.ExtensionContext) {
 
     const showTerminalCommand = vscode.commands.registerCommand("lego-spikeprime-mindstorms-vscode.showTerminal", showTerminal);
 
-    context.subscriptions.push(connectToHubCommand);
-    context.subscriptions.push(disconnectFromHubCommand);
-    context.subscriptions.push(uploadProgramCommand);
-    context.subscriptions.push(startProgramCommand);
-    context.subscriptions.push(terminateProgramCommand);
-    context.subscriptions.push(showTerminalCommand);
+    context.subscriptions.push(
+        connectToHubCommand,
+        disconnectFromHubCommand,
+        uploadProgramCommand,
+        startProgramCommand,
+        terminateProgramCommand,
+        showTerminalCommand,
 
-    context.subscriptions.push(hubStatusBarItem);
+        hubStatusBarItem,
+    );
 }
 
 // this method is called when your extension is deactivated
@@ -275,13 +312,13 @@ function showTerminal() {
 
 async function updateHubStatusBarItem() {
     if (rpc?.isOpenIn) {
-        setTimeout(async () => {
-            const hubInfo = await rpc.sendMessage("get_hub_info");
-            const { firmware, runtime } = hubInfo;
+        // setTimeout(async () => {
+        const hubInfo = await rpc.sendMessage("get_hub_info");
+        const { firmware, runtime } = hubInfo;
 
-            hubStatusBarItem.text = `$(repl) LEGO Hub: Connected (${firmware.version.join(".")} / ${runtime.version.join(".")})`;
-            hubStatusBarItem.command = Command.DisconnectFromHub;
-        }, 1000);
+        hubStatusBarItem.text = `$(repl) LEGO Hub: Connected (${firmware.version.join(".")} / ${runtime.version.join(".")})`;
+        hubStatusBarItem.command = Command.DisconnectFromHub;
+        // }, 2000);
     }
     else {
         hubStatusBarItem.text = "$(debug-disconnect) LEGO Hub: Disconnected";
