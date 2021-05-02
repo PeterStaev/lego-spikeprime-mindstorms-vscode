@@ -43,7 +43,7 @@ def setup(rpc, system, stop):
     vm.register_on_start("another_unique_string", on_start)
     return vm
 ```
-You can check what advanced functions found so far [here](ADVANCED-FEATURES). 
+You can check what advanced functions found so far [here](ADVANCED-FEATURES.md). 
 
 ## Automatic upload/start of a python file
 
