@@ -67,7 +67,7 @@ Thanks to [sanjayseshan/spikeprime-tools](https://github.com/sanjayseshan/spikep
 
 ## Disclaimer
 
-*This extension uses unofficial and undocumented APIs. They can change without notice. Functions tested on a Mac connecting to a MINDSTORMS Robot Inventor Hub*
+*This extension uses unofficial and undocumented APIs. They can change without notice. Functions tested on a Mac connecting to a MINDSTORMS Robot Inventor Hub FW Version 1.0.6.34 with runtime version 2.1.4.13*
 
-*LEGO and MINDSTORMS are registered trademarks of the LEGO Group. SPIKE is trademark of LEGO Group*
+*LEGO and MINDSTORMS are registered trademarks of the LEGO Group. SPIKE is trademark of LEGO Group.*
 
