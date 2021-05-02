@@ -1,65 +1,73 @@
-# lego-spikeprime-mindstorms-vscode README
+# LEGO SPIKE Prime / MINDSTORMS Robot Inventor Extension
 
-This is the README for your extension "lego-spikeprime-mindstorms-vscode". After writing up a brief description, we recommend including the following sections.
+This extension helps you connect to the SPIKE Prime or MINDSTORMS Robot Inventor brick and perform various operations on it. 
 
 ## Features
 
-Describe specific features of your extension including screenshots of your extension in action. Image paths are relative to this README file.
+Shows the connections status right in the status bar
+![status](images/status.png)
 
-For example if there is an image subfolder under your extension project workspace:
+\
+Clicking on the status will either connect or disconnect (if already connected). Support connecting to USB and Bluetooth (see Known Issues for limitations). 
+![connect](images/connect.png)
 
-\!\[feature X\]\(images/feature-x.png\)
+\
+Once connected you can start a running program by choosing its slot. For each slot if a program is present you will see its name next to the slot number:
+![slot-selection](images/slot-selection.png)
 
-> Tip: Many popular extensions utilize animations. This is an excellent way to show off your extension! We recommend short, focused animations that are easy to follow.
+You can upload two types of programs with this extension:
+![type-selection](images/type-selection.png)
 
-## Requirements
+### Python (standard)
 
-If you have any requirements or dependencies, add a section describing those and how to install and configure them.
+This is more or less the same as a python project, created with the Mindstorms or SPIKE prime apps. But allows you to use your favorite code editor and its extensions instead of the built in one. The only requirement is if you want to see the the outputs of the `print()` command in the integrated log window you have to override python's print with the one provided on the brick:
+```python
+from util.print_override import spikeprint
+print = spikeprint
+```
 
-## Extension Settings
+### Python (advanced)
 
-Include if your extension adds any VS Code settings through the `contributes.configuration` extension point.
+This gives you access to an async code execution and event notifications that are provided by built in event loop that runs on the brick. The event loop is used to run Scratch programs and I haven't found any other way to access it from standard python type programs. 
 
-For example:
+The advanced programs mus follow a specific template in order for them to execute correctly:
+```python
+from util.print_override import spikeprint
+print = spikeprint
 
-This extension contributes the following settings:
+async def on_start(vm, stack):
+    print("This is the spot of your code")
 
-* `myExtension.enable`: enable/disable this extension
-* `myExtension.thing`: set to `blah` to do something
+def setup(rpc, system, stop):
+    vm = VirtualMachine(rpc, system, stop, "something_unique")
+    vm.register_on_start("another_unique_string", on_start)
+    return vm
+```
+You can check what advanced functions found so far [here](ADVANCED-FEATURES). 
+
+## Automatic upload/start of a python file
+
+During active development you will be uploading a program over and over again so going through all the prompts for type and slot is not very convenient. You can skip those prompts and automatically start the program after uploading by adding a specific comment line as first in your program. 
+```python
+# LEGO type:<advanced / standard> slot:<0-19> [autostart]
+```
+
+For example, if I want the program to be uploaded as an advanced python program to slot 5 and autostart it once the upload is finished the comment should be the following
+```python
+# LEGO type:advanced slot:5 autostart
+```
 
 ## Known Issues
 
-Calling out known issues can help limit users opening duplicate issues against your extension.
+* When using Bluetooth and you have many programs stored on the brick it stops responding to querying slot info. You should eiher use USB connection or avoid using commands that wuery slot info - for example you can completely avoid them by using the automatic upload comment in your python files. 
 
-## Release Notes
+## Credits
 
-Users appreciate release notes as you update your extension.
+Thanks to [sanjayseshan/spikeprime-tools](https://github.com/sanjayseshan/spikeprime-tools) and [bricklife](https://gist.github.com/bricklife/13c7fe07c3145dd94f4f23d20ccf5a79) for figuring out currently available JSON RPC that the brick supports. 
 
-### 1.0.0
+## Disclaimer
 
-Initial release of ...
+*This extension uses unofficial and undocumented APIs. They can change without notice. Functions tested on a Mac connecting to a MINDSTORMS Robot Inventor Hub*
 
-### 1.0.1
+*LEGO and MINDSTORMS are registered trademarks of the LEGO Group. SPIKE is trademark of LEGO Group*
 
-Fixed issue #.
-
-### 1.1.0
-
-Added features X, Y, and Z.
-
------------------------------------------------------------------------------------------------------------
-
-## Working with Markdown
-
-**Note:** You can author your README using Visual Studio Code.  Here are some useful editor keyboard shortcuts:
-
-* Split the editor (`Cmd+\` on macOS or `Ctrl+\` on Windows and Linux)
-* Toggle preview (`Shift+CMD+V` on macOS or `Shift+Ctrl+V` on Windows and Linux)
-* Press `Ctrl+Space` (Windows, Linux) or `Cmd+Space` (macOS) to see a list of Markdown snippets
-
-### For more information
-
-* [Visual Studio Code's Markdown Support](http://code.visualstudio.com/docs/languages/markdown)
-* [Markdown Syntax Reference](https://help.github.com/articles/markdown-basics/)
-
-**Enjoy!**

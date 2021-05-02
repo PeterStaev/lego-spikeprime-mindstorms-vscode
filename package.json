@@ -1,10 +1,11 @@
 {
 	"name": "lego-spikeprime-mindstorms-vscode",
-	"displayName": "lego-spikeprime-mindstorms-vscode",
-	"description": "Helps you connect Lego's SPIKE Prime/MindStorms Robot Inventor",
-	"version": "0.0.1",
+	"displayName": "LEGO SPIKE Prime / MINDSTORMS Robot Inventor Extension",
+	"description": "Helps you connect Lego's SPIKE Prime/MINDSTORMS Robot Inventor",
+	"publisher": "PeterStaev",
+	"version": "1.0.0",
 	"engines": {
-		"vscode": "^1.52.0"
+		"vscode": "^1.55.0"
 	},
 	"categories": [
 		"Other"
@@ -41,6 +42,22 @@
 			}
 		]
 	},
+	"categories": [
+		"Other"
+	],
+	"keywords": [
+		"lego",
+		"mindstorms",
+		"spike",
+		"robot inventor",
+		"prime"
+	],
+	"icon": "images/icon.png",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/PeterStaev/lego-spikeprime-mindstorms-vscode.git"
+	},
+	"license": "Apache-2.0",
 	"scripts": {
 		"vscode:prepublish": "npm run compile",
 		"compile": "tsc -p ./",

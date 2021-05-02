@@ -26,7 +26,7 @@ const programTypes: TypeQuickPickItem[] = [
     },
     {
         label: "Python (advanced)",
-        detail: "This allows more advanced features like event notifications and async code executions.\n\rHas to follow specific program template. Refer to the readme for more details. ",
+        detail: "Allows for more advanced features like event notifications and async code execution.",
         type: "advanced",
         systemType: "scratch",
     },
