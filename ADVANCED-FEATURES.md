@@ -67,3 +67,30 @@ The parameter has the following meaning:
 * `"2"` - Left (power button on the right)
 * `"3"` - Right (power button on the left)
 * `"4"` - Upside Down (power button at the top)
+
+## Events
+In order to handle events you need to subscribe to listen to some event name. This is done in the `setup` function like this:
+```python
+def setup(rpc, system, stop):
+    vm = VirtualMachine(rpc, system, stop, "<program_name>")
+    #...
+    vm.register_on_broadcast("<unique_subscription_name>", handler, "<broadcast_name>")
+    #...
+    return vm
+```
+
+Your `handler` should look something like this:
+```python
+async def handler(vm, stack):
+    print("I'm handling the broadcast")
+```
+
+Then in order to broadcast a given event you can do the following thing:
+```python
+stacks = vm.broadcast("<broadcast_name>")
+```
+Note that the code in the handler is executed asynchroniously. In case you want to wait for the execution to complete before continuing with your code after the broadcast you can add the following loop:
+```python
+while any(stack.is_active() for stack in stacks):
+    yield
+```
