@@ -87,7 +87,6 @@
 	},
 	"dependencies": {
 		"@serialport/parser-readline": "^9.0.7",
-		"serialport": "^9.0.7",
-		"sharp": "^0.28.3"
+		"serialport": "^9.0.7"
 	}
 }
