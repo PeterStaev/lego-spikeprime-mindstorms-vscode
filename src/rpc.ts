@@ -46,15 +46,18 @@ export class Rpc {
                     switch (message) {
                         case "userProgram.print":
                             logger?.log(Buffer.from(json["p"]["value"], "base64").toString());
+                            this.sendResponse(json["i"]);
                             break;
 
                         case "user_program_error":
                             logger?.error(Buffer.from(json["p"][3], "base64").toString().replace(/\n/gi, "\n\r"));
                             logger?.error(Buffer.from(json["p"][4], "base64").toString().replace(/\n/gi, "\n\r"));
+                            logger?.info("\n\r");
                             break;
 
                         case "runtime_error":
                             logger?.error(Buffer.from(json["p"][3], "base64").toString().replace(/\n/gi, "\n\r"));
+                            logger?.info("\n\r");
                             break;
                     }
                 }
@@ -115,5 +118,17 @@ export class Rpc {
             this._serialPort.write(Buffer.from("\r"));
             this._serialPort.drain();
         });
+    }
+
+    public sendResponse(id: string, response: any = {}) {
+        const msg = { "i": id, "r": response };
+
+        while (this._serialPort.read()) {
+            // DO NOTHING
+        }
+
+        this._serialPort.write(Buffer.from(JSON.stringify(msg)));
+        this._serialPort.write(Buffer.from("\r"));
+        this._serialPort.drain();
     }
 }
