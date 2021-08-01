@@ -1,5 +1,7 @@
 // The module 'vscode' contains the VS Code extensibility API
 // Import the module and reference it with the alias vscode in your code below
+import * as mpy from "@pybricks/mpy-cross-v5";
+
 import * as fs from "fs";
 import * as path from "path";
 import * as serialport from "serialport";
@@ -70,7 +72,8 @@ export function activate(context: vscode.ExtensionContext) {
             }
         }
         catch (e) {
-            vscode.window.showErrorMessage(e);
+            console.error(e);
+            vscode.window.showErrorMessage("Connecting to Hub Failed!");
         }
     });
 
@@ -125,6 +128,7 @@ export function activate(context: vscode.ExtensionContext) {
                 }
             }
 
+            // Prompt for type
             if (!typeSelection) {
                 typeSelection = await vscode.window.showQuickPick(programTypes);
                 if (!typeSelection) {
@@ -132,6 +136,7 @@ export function activate(context: vscode.ExtensionContext) {
                 }
             }
 
+            // Prompt for slot
             if (!slotId
                 || slotId < 0
                 || slotId > 19) {
@@ -169,7 +174,8 @@ export function activate(context: vscode.ExtensionContext) {
             }
         }
         catch (e) {
-            vscode.window.showErrorMessage(e);
+            console.error(e);
+            vscode.window.showErrorMessage("Program Upload Failed!");
         }
     });
 
@@ -206,7 +212,8 @@ export function activate(context: vscode.ExtensionContext) {
             );
         }
         catch (e) {
-            vscode.window.showErrorMessage(e);
+            console.error(e);
+            vscode.window.showErrorMessage("Starting Program Failed!");
         }
     });
 
@@ -226,7 +233,8 @@ export function activate(context: vscode.ExtensionContext) {
             );
         }
         catch (e) {
-            vscode.window.showErrorMessage(e);
+            console.error(e);
+            vscode.window.showErrorMessage("Terminating Program Failed!");
         }
     });
 
@@ -253,39 +261,68 @@ export function deactivate() {
 
 async function performUploadProgram(slotId: number, type: "python" | "scratch", progress?: vscode.Progress<{ increment: number }>) {
     const currentlyOpenTabFilePath = vscode.window.activeTextEditor?.document.fileName;
+    const config = vscode.workspace.getConfiguration();
 
     if (currentlyOpenTabFilePath) {
         const currentlyOpenTabFileName = path.basename(currentlyOpenTabFilePath).replace(path.extname(currentlyOpenTabFilePath), "");
         const stats = fs.statSync(currentlyOpenTabFilePath);
-        const uploadProgramResult = await rpc.sendMessage(
-            "start_write_program",
-            {
-                slotid: slotId,
-                size: stats.size,
-                meta: {
-                    created: stats.birthtime.getTime(),
-                    modified: stats.mtime.getTime(),
-                    name: Buffer.from(currentlyOpenTabFileName, "utf-8").toString("base64"),
-                    type,
-                    // eslint-disable-next-line @typescript-eslint/naming-convention
-                    project_id: getRandomString(12),
-                },
-            },
-        );
 
-        const blockSize: number = uploadProgramResult.blocksize;
-        const transferId: string = uploadProgramResult.transferid;
-        const stream = fs.createReadStream(currentlyOpenTabFilePath, { highWaterMark: blockSize });
-        const increment = (1 / Math.ceil(stats.size / blockSize)) * 100;
-        for await (const data of stream) {
-            progress?.report({ increment });
-            await rpc.sendMessage(
-                "write_package",
-                {
-                    data: data.toString("base64"),
-                    transferid: transferId,
+        let compileFilePath: string | undefined;
+        let compiledStats: fs.Stats | undefined;
+
+        try {
+            if (config.get("legoSpikePrimeMindstorms.compileBeforeUpload")) {
+                const compileResult = await mpy.compile(path.basename(currentlyOpenTabFilePath),
+                    fs.readFileSync(currentlyOpenTabFilePath).toString("utf-8"),
+                    ["-municode"]
+                );
+
+                if (compileResult?.status === 0) {
+                    compileFilePath = path.join(path.dirname(currentlyOpenTabFilePath), `${currentlyOpenTabFileName}.mpy.tmp`);
+
+                    fs.writeFileSync(compileFilePath, compileResult.mpy);
+
+                    compiledStats = fs.statSync(compileFilePath);
                 }
+            }
+
+            const uploadProgramResult = await rpc.sendMessage(
+                "start_write_program",
+                {
+                    slotid: slotId,
+                    size: compiledStats?.size ?? stats.size,
+                    filename: "__init__" + (compiledStats ? ".mpy" : ".py"),
+                    meta: {
+                        created: stats.birthtime.getTime(),
+                        modified: stats.mtime.getTime(),
+                        name: Buffer.from(currentlyOpenTabFileName, "utf-8").toString("base64"),
+                        type,
+                        // eslint-disable-next-line @typescript-eslint/naming-convention
+                        project_id: getRandomString(12),
+                    },
+                },
             );
+
+            const blockSize: number = uploadProgramResult.blocksize;
+            const transferId: string = uploadProgramResult.transferid;
+            const stream = fs.createReadStream(compileFilePath ?? currentlyOpenTabFilePath, { highWaterMark: blockSize });
+            const increment = (1 / Math.ceil((compiledStats?.size ?? stats.size) / blockSize)) * 100;
+            for await (const data of stream) {
+                progress?.report({ increment });
+                await rpc.sendMessage(
+                    "write_package",
+                    {
+                        data: data.toString("base64"),
+                        transferid: transferId,
+                    }
+                );
+            }
+        }
+        finally {
+            if (compileFilePath
+                && fs.existsSync(compileFilePath)) {
+                fs.unlinkSync(compileFilePath);
+            }
         }
     }
 }

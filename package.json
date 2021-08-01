@@ -15,6 +15,18 @@
 	],
 	"main": "./out/extension.js",
 	"contributes": {
+		"configuration": [
+			{
+				"title": "LEGO SPIKE Prime / MINDSTORMS Robot Inventor",
+				"properties": {
+					"legoSpikePrimeMindstorms.compileBeforeUpload": {
+						"type": "boolean",
+						"default": false,
+						"description": "Compile PY files to MPY before uploading to the LEGO brick."
+					}
+				}
+			}
+		],
 		"commands": [
 			{
 				"command": "lego-spikeprime-mindstorms-vscode.connectToHub",
@@ -86,6 +98,7 @@
 		"vscode-test": "^1.5.0"
 	},
 	"dependencies": {
+		"@pybricks/mpy-cross-v5": "^2.0.0",
 		"@serialport/parser-readline": "^9.0.7",
 		"serialport": "^9.0.7"
 	}
