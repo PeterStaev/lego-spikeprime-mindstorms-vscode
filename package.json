@@ -3,7 +3,7 @@
 	"displayName": "LEGO SPIKE Prime / MINDSTORMS Robot Inventor Extension",
 	"description": "Helps you connect Lego's SPIKE Prime/MINDSTORMS Robot Inventor",
 	"publisher": "PeterStaev",
-	"version": "1.1.0",
+	"version": "1.1.1",
 	"engines": {
 		"vscode": "^1.56.0"
 	},
@@ -75,7 +75,7 @@
 		"lint": "eslint src --ext ts",
 		"test": "node ./out/test/runTest.js",
 		"copy.binding": "rimraf ./node_modules/@serialport/bindings/build && ncp ./.bindings ./node_modules/@serialport/bindings/lib/binding/",
-		"build.binding": "npx electron-rebuild -v 12.0.4"
+		"build.binding": "npx electron-rebuild -v 13.1.7"
 	},
 	"devDependencies": {
 		"@types/glob": "^7.1.3",

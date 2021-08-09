@@ -1,5 +1,8 @@
 # Change Log
 
+## 1.1.1 - 2021-08-09
+* Add support for VSCode 1.59+ (macOS x64, win32 and win64)
+
 ## 1.1.0 - 2021-08-02
 * Added option to compile programs to MPY before uploading to the LEGO Brick
 * Fix `print` to be faster and not delay program for 1sec
