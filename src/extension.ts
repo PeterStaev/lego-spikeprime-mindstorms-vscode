@@ -73,7 +73,7 @@ export function activate(context: vscode.ExtensionContext) {
         }
         catch (e) {
             console.error(e);
-            vscode.window.showErrorMessage("Connecting to Hub Failed!");
+            vscode.window.showErrorMessage("Connecting to Hub Failed!" + (e instanceof Error ? ` ${e.message}` : ""));
         }
     });
 
@@ -175,7 +175,7 @@ export function activate(context: vscode.ExtensionContext) {
         }
         catch (e) {
             console.error(e);
-            vscode.window.showErrorMessage("Program Upload Failed!");
+            vscode.window.showErrorMessage("Program Upload Failed!" + (e instanceof Error ? ` ${e.message}` : ""));
         }
     });
 
@@ -213,7 +213,7 @@ export function activate(context: vscode.ExtensionContext) {
         }
         catch (e) {
             console.error(e);
-            vscode.window.showErrorMessage("Starting Program Failed!");
+            vscode.window.showErrorMessage("Starting Program Failed!" + (e instanceof Error ? ` ${e.message}` : ""));
         }
     });
 
@@ -234,7 +234,7 @@ export function activate(context: vscode.ExtensionContext) {
         }
         catch (e) {
             console.error(e);
-            vscode.window.showErrorMessage("Terminating Program Failed!");
+            vscode.window.showErrorMessage("Terminating Program Failed!" + (e instanceof Error ? ` ${e.message}` : ""));
         }
     });
 
@@ -283,6 +283,11 @@ async function performUploadProgram(slotId: number, type: "python" | "scratch", 
                     fs.writeFileSync(compileFilePath, compileResult.mpy);
 
                     compiledStats = fs.statSync(compileFilePath);
+                }
+                else {
+                    logger?.error(compileResult.err.join("\n\r"));
+                    logger?.error("\n\r");
+                    throw new Error("Compilation Failed!");
                 }
             }
 
