@@ -1,5 +1,10 @@
 # Change Log
 
+## 1.2.0 - 2021-08-22
+* Add support for native python `print` command (it is no longer needed to override with the spike prime version!)
+* Print error when local MPY compile fails
+* Don't use temp file for compiled MPY result. Stream the result directly from memmory. 
+
 ## 1.1.1 - 2021-08-09
 * Add support for VSCode 1.59+ (macOS x64, win32 and win64)
 

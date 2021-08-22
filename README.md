@@ -20,11 +20,7 @@ You can upload two types of programs with this extension:
 
 ### Python (standard)
 
-This is more or less the same as a python project, created with the Mindstorms or SPIKE prime apps. But allows you to use your favorite code editor and its extensions instead of the built in one. The only requirement is if you want to see the the outputs of the `print()` command in the integrated log window you have to override python's print with the one provided on the brick:
-```python
-from util.print_override import spikeprint
-print = spikeprint
-```
+This is more or less the same as a python project, created with the Mindstorms or SPIKE prime apps. But allows you to use your favorite code editor and its extensions instead of the built in one.
 
 ### Python (advanced)
 
@@ -32,9 +28,6 @@ This gives you access to an async code execution and event notifications that ar
 
 The advanced programs mus follow a specific template in order for them to execute correctly:
 ```python
-from util.print_override import spikeprint
-print = spikeprint
-
 async def on_start(vm, stack):
     print("This is the spot of your code")
 
