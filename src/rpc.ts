@@ -30,6 +30,7 @@ export class Rpc {
                 // When data cannot be JSON parsed we re probably getting text from user's `print` command so we log it
                 logger?.info(data.replace(/\n/gi, "\n\r"));
                 logger?.info("\n\r");
+                return;
             }
 
             try {

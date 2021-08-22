@@ -5,6 +5,7 @@ import * as mpy from "@pybricks/mpy-cross-v5";
 import * as fs from "fs";
 import * as path from "path";
 import * as serialport from "serialport";
+import { Readable } from "stream";
 import * as vscode from "vscode";
 
 import { Logger } from "./logger";
@@ -267,52 +268,50 @@ async function performUploadProgram(slotId: number, type: "python" | "scratch", 
         const currentlyOpenTabFileName = path.basename(currentlyOpenTabFilePath).replace(path.extname(currentlyOpenTabFilePath), "");
         const stats = fs.statSync(currentlyOpenTabFilePath);
 
-        let compileFilePath: string | undefined;
-        let compiledStats: fs.Stats | undefined;
+        let compileResult: mpy.CompileResult | undefined;
 
-        try {
-            if (config.get("legoSpikePrimeMindstorms.compileBeforeUpload")) {
-                const compileResult = await mpy.compile(path.basename(currentlyOpenTabFilePath),
-                    fs.readFileSync(currentlyOpenTabFilePath).toString("utf-8"),
-                    ["-municode"]
-                );
-
-                if (compileResult?.status === 0) {
-                    compileFilePath = path.join(path.dirname(currentlyOpenTabFilePath), `${currentlyOpenTabFileName}.mpy.tmp`);
-
-                    fs.writeFileSync(compileFilePath, compileResult.mpy);
-
-                    compiledStats = fs.statSync(compileFilePath);
-                }
-                else {
-                    logger?.error(compileResult.err.join("\n\r"));
-                    logger?.error("\n\r");
-                    throw new Error("Compilation Failed!");
-                }
-            }
-
-            const uploadProgramResult = await rpc.sendMessage(
-                "start_write_program",
-                {
-                    slotid: slotId,
-                    size: compiledStats?.size ?? stats.size,
-                    filename: "__init__" + (compiledStats ? ".mpy" : ".py"),
-                    meta: {
-                        created: stats.birthtime.getTime(),
-                        modified: stats.mtime.getTime(),
-                        name: Buffer.from(currentlyOpenTabFileName, "utf-8").toString("base64"),
-                        type,
-                        // eslint-disable-next-line @typescript-eslint/naming-convention
-                        project_id: getRandomString(12),
-                    },
-                },
+        if (config.get("legoSpikePrimeMindstorms.compileBeforeUpload")) {
+            compileResult = await mpy.compile(path.basename(currentlyOpenTabFilePath),
+                fs.readFileSync(currentlyOpenTabFilePath).toString("utf-8"),
+                ["-municode"]
             );
 
-            const blockSize: number = uploadProgramResult.blocksize;
-            const transferId: string = uploadProgramResult.transferid;
-            const stream = fs.createReadStream(compileFilePath ?? currentlyOpenTabFilePath, { highWaterMark: blockSize });
-            const increment = (1 / Math.ceil((compiledStats?.size ?? stats.size) / blockSize)) * 100;
-            for await (const data of stream) {
+            if (compileResult?.status !== 0) {
+                logger?.error(compileResult.err.join("\n\r"));
+                logger?.error("\n\r");
+                throw new Error("Compilation Failed!");
+            }
+        }
+
+        const uploadSize = compileResult?.mpy?.byteLength ?? stats.size;
+        const uploadProgramResult = await rpc.sendMessage(
+            "start_write_program",
+            {
+                slotid: slotId,
+                size: uploadSize,
+                filename: "__init__" + (compileResult ? ".mpy" : ".py"),
+                meta: {
+                    created: stats.birthtime.getTime(),
+                    modified: stats.mtime.getTime(),
+                    name: Buffer.from(currentlyOpenTabFileName, "utf-8").toString("base64"),
+                    type,
+                    // eslint-disable-next-line @typescript-eslint/naming-convention
+                    project_id: getRandomString(12),
+                },
+            },
+        );
+
+        const blockSize: number = uploadProgramResult.blocksize;
+        const transferId: string = uploadProgramResult.transferid;
+        const increment = (1 / Math.ceil(uploadSize / blockSize)) * 100;
+
+        if (compileResult) {
+            const stream: Readable = new Readable();
+            stream.push(compileResult.mpy!);
+            stream.push(null);
+
+            let data: Buffer | undefined;
+            while ((data = stream.read(blockSize)) != null) {
                 progress?.report({ increment });
                 await rpc.sendMessage(
                     "write_package",
@@ -323,10 +322,17 @@ async function performUploadProgram(slotId: number, type: "python" | "scratch", 
                 );
             }
         }
-        finally {
-            if (compileFilePath
-                && fs.existsSync(compileFilePath)) {
-                fs.unlinkSync(compileFilePath);
+        else {
+            const stream = fs.createReadStream(currentlyOpenTabFilePath, { highWaterMark: blockSize });
+            for await (const data of stream) {
+                progress?.report({ increment });
+                await rpc.sendMessage(
+                    "write_package",
+                    {
+                        data: data.toString("base64"),
+                        transferid: transferId,
+                    }
+                );
             }
         }
     }
