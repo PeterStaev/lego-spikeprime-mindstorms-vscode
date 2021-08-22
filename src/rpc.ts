@@ -21,23 +21,28 @@ export class Rpc {
         this._serialPort.setDefaultEncoding("utf-8");
         this._parser = this._serialPort.pipe(new SerialPort.parsers.Readline({ delimiter: "\r" }));
         this._parser.on("data", (data: string) => {
-            // if (!data.match(/"m":0/gi)
-            //     && !data.match(/"m":2/gi)) {
-            //     console.log(data);
-            // }
+            let json: { [key: string]: any };
 
             try {
-                const json = JSON.parse(data);
-                const id = json["i"];
-                const message = json["m"];
+                json = JSON.parse(data);
+            }
+            catch (e) {
+                // When data cannot be JSON parsed we re probably getting text from user's `print` command so we log it
+                logger?.info(data.replace(/\n/gi, "\n\r"));
+                logger?.info("\n\r");
+            }
+
+            try {
+                const id = json!["i"];
+                const message = json!["m"];
                 if (id && this._pendingMessagesPromises.has(id)) {
                     const [resolve, reject] = this._pendingMessagesPromises.get(id) ?? [];
 
-                    if (json["e"] && reject) {
-                        reject(Buffer.from(json["e"], "base64").toString());
+                    if (json!["e"] && reject) {
+                        reject(Buffer.from(json!["e"], "base64").toString());
                     }
                     else if (resolve) {
-                        resolve(json["r"]);
+                        resolve(json!["r"]);
                     }
 
                     this._pendingMessagesPromises.delete(id);
@@ -45,25 +50,25 @@ export class Rpc {
                 else if (message) {
                     switch (message) {
                         case "userProgram.print":
-                            logger?.log(Buffer.from(json["p"]["value"], "base64").toString());
-                            this.sendResponse(json["i"]);
+                            logger?.log(Buffer.from(json!["p"]["value"], "base64").toString());
+                            this.sendResponse(json!["i"]);
                             break;
 
                         case "user_program_error":
-                            logger?.error(Buffer.from(json["p"][3], "base64").toString().replace(/\n/gi, "\n\r"));
-                            logger?.error(Buffer.from(json["p"][4], "base64").toString().replace(/\n/gi, "\n\r"));
+                            logger?.error(Buffer.from(json!["p"][3], "base64").toString().replace(/\n/gi, "\n\r"));
+                            logger?.error(Buffer.from(json!["p"][4], "base64").toString().replace(/\n/gi, "\n\r"));
                             logger?.info("\n\r");
                             break;
 
                         case "runtime_error":
-                            logger?.error(Buffer.from(json["p"][3], "base64").toString().replace(/\n/gi, "\n\r"));
+                            logger?.error(Buffer.from(json!["p"][3], "base64").toString().replace(/\n/gi, "\n\r"));
                             logger?.info("\n\r");
                             break;
                     }
                 }
             }
             catch (e) {
-                // DO NOTHING
+                console.error(e);
             }
         });
     }
