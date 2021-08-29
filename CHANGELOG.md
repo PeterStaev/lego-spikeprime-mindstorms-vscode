@@ -1,5 +1,8 @@
 # Change Log
 
+## 1.2.1 - 2021-08-29
+* Add support for Linux x64 platform
+
 ## 1.2.0 - 2021-08-22
 * Add support for native python `print` command (it is no longer needed to override with the spike prime version!)
 * Print error when local MPY compile fails
