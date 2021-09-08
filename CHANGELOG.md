@@ -1,5 +1,8 @@
 # Change Log
 
+## 1.2.2 - 2021-09-08
+* Add support for VSCode 1.59+ for Apple Silicon
+
 ## 1.2.1 - 2021-08-29
 * Add support for Linux x64 platform
 
