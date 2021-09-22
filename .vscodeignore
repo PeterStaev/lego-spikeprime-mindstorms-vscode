@@ -1,6 +1,6 @@
-.vscode/**
-.vscode-test/**
-src/**
+.vscode
+.vscode-test
+src
 .gitignore
 .yarnrc
 **/tsconfig.json
@@ -9,3 +9,11 @@ src/**
 **/*.ts
 .samples/**
 .bindings/**
+node_modules
+webpack.config.json
+out
+
+# Externals from webpack
+!node_modules/bindings
+!node_modules/file-uri-to-path
+!node_modules/@pybricks/mpy-cross-v5
