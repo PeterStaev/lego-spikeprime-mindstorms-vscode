@@ -1,5 +1,8 @@
 # Change Log
 
+## 1.3.0 - 2021-09-22
+* Bundle extension with `webpack` improving load performance and minimizing size
+
 ## 1.2.2 - 2021-09-08
 * Add support for VSCode 1.59+ for Apple Silicon
 
