@@ -277,8 +277,8 @@ async function performUploadProgram(slotId: number, type: "python" | "scratch", 
             );
 
             if (compileResult?.status !== 0) {
-                logger?.error(compileResult.err.join("\n\r"));
-                logger?.error("\n\r");
+                logger?.error(compileResult.err.join("\r\n"));
+                logger?.error("\r\n");
                 throw new Error("Compilation Failed!");
             }
         }
@@ -345,7 +345,7 @@ function showTerminal() {
             pty: {
                 onDidWrite: writeEmitter.event,
                 open: () => {
-                    logger.info("Welcome to the LEGO Hub Log Terminal!\n");
+                    logger.info("Welcome to the LEGO Hub Log Terminal!\r\n");
                 },
                 close: () => { terminal = null; },
                 handleInput: (char: string) => {

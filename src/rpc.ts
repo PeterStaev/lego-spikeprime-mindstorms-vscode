@@ -38,8 +38,8 @@ export class Rpc {
             }
 
             if (isPlainPrintIn) {
-                logger?.info(data.replace(/\n/gi, "\n\r"));
-                logger?.info("\n\r");
+                logger?.log(data.replace(/^\n/gi, "").replace(/\n/gi, "\r\n"));
+                logger?.log("\r\n");
                 return;
             }
 
@@ -66,14 +66,14 @@ export class Rpc {
                             break;
 
                         case "user_program_error":
-                            logger?.error(Buffer.from(json!["p"][3], "base64").toString().replace(/\n/gi, "\n\r"));
-                            logger?.error(Buffer.from(json!["p"][4], "base64").toString().replace(/\n/gi, "\n\r"));
-                            logger?.info("\n\r");
+                            logger?.error(Buffer.from(json!["p"][3], "base64").toString().replace(/\n/gi, "\r\n"));
+                            logger?.error(Buffer.from(json!["p"][4], "base64").toString().replace(/\n/gi, "\r\n"));
+                            logger?.info("\r\n");
                             break;
 
                         case "runtime_error":
-                            logger?.error(Buffer.from(json!["p"][3], "base64").toString().replace(/\n/gi, "\n\r"));
-                            logger?.info("\n\r");
+                            logger?.error(Buffer.from(json!["p"][3], "base64").toString().replace(/\n/gi, "\r\n"));
+                            logger?.info("\r\n");
                             break;
                     }
                 }
