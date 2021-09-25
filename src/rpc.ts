@@ -22,12 +22,22 @@ export class Rpc {
         this._parser = this._serialPort.pipe(new SerialPort.parsers.Readline({ delimiter: "\r" }));
         this._parser.on("data", (data: string) => {
             let json: { [key: string]: any };
+            let isPlainPrintIn: boolean = false;
 
             try {
                 json = JSON.parse(data);
+
+                // Case for simple printof a number: `print(123)`
+                if (typeof json === "number") {
+                    isPlainPrintIn = true;
+                }
             }
             catch (e) {
                 // When data cannot be JSON parsed we re probably getting text from user's `print` command so we log it
+                isPlainPrintIn = true;
+            }
+
+            if (isPlainPrintIn) {
                 logger?.info(data.replace(/\n/gi, "\n\r"));
                 logger?.info("\n\r");
                 return;
