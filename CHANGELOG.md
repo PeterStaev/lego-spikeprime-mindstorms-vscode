@@ -1,5 +1,9 @@
 # Change Log
 
+## 1.3.1 - 2021-09-25
+* Enhance prnting to correct new lines and bare printing numbers
+* Fix auto-uploading of programs to slot 0
+
 ## 1.3.0 - 2021-09-22
 * Bundle extension with `webpack` improving load performance and minimizing size
 
