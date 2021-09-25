@@ -138,7 +138,7 @@ export function activate(context: vscode.ExtensionContext) {
             }
 
             // Prompt for slot
-            if (!slotId
+            if (isNaN(slotId)
                 || slotId < 0
                 || slotId > 19) {
                 const storageStatus = await rpc.sendMessage("get_storage_status");
