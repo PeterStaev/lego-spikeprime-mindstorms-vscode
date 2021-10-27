@@ -51,6 +51,10 @@
 			{
 				"command": "lego-spikeprime-mindstorms-vscode.showTerminal",
 				"title": "LEGO Hub: Show Log Terminal"
+			},
+			{
+				"command": "lego-spikeprime-mindstorms-vscode.addFileHeader",
+				"title": "LEGO Hub: Add File Header"
 			}
 		]
 	},
