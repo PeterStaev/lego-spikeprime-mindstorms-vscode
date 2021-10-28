@@ -419,19 +419,18 @@ function showTerminal() {
 
 async function updateHubStatusBarItem() {
     if (rpc?.isOpenIn) {
-        // setTimeout(async () => {
         const hubInfo = await rpc.sendMessage("get_hub_info");
         const { firmware, runtime } = hubInfo;
 
         hubStatusBarItem.text = `$(repl) LEGO Hub: Connected (${firmware.version.join(".")} / ${runtime.version.join(".")})`;
         hubStatusBarItem.command = Command.DisconnectFromHub;
-        // }, 2000);
     }
     else {
         hubStatusBarItem.text = "$(debug-disconnect) LEGO Hub: Disconnected";
         hubStatusBarItem.command = Command.ConnectToHub;
     }
 
+    vscode.commands.executeCommand("setContext", "lego-spikeprime-mindstorms-vscode.isConnectedIn", !!rpc?.isOpenIn);
 }
 
 async function promptForProgramType(currentStep?: number, totalSteps?: number): Promise<TypeQuickPickItem | undefined> {
