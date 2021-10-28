@@ -138,7 +138,7 @@ export function activate(context: vscode.ExtensionContext) {
 
             // Prompt for type
             if (!typeSelection) {
-                typeSelection = await vscode.window.showQuickPick(programTypes);
+                typeSelection = await promptForProgramType();
                 if (!typeSelection) {
                     return;
                 }
@@ -148,23 +148,10 @@ export function activate(context: vscode.ExtensionContext) {
             if (isNaN(slotId)
                 || slotId < 0
                 || slotId > 19) {
-                const storageStatus = await rpc.sendMessage("get_storage_status");
-                const slots = storageStatus.slots;
-                const quickPickSlots: vscode.QuickPickItem[] = [];
-                for (let index = 0; index < 20; index++) {
-                    quickPickSlots.push({
-                        label: index.toString(),
-                        description: slots[index] ? Buffer.from(slots[index].name, "base64").toString("utf-8") : "",
-                    });
-                }
-
-                const slotSelection = await vscode.window.showQuickPick(quickPickSlots);
-
-                if (!slotSelection) {
+                slotId = await promptForSlot();
+                if (isNaN(slotId)) {
                     return;
                 }
-
-                slotId = +slotSelection.label;
             }
 
             await vscode.window.withProgress(
@@ -249,108 +236,67 @@ export function activate(context: vscode.ExtensionContext) {
     const showTerminalCommand = vscode.commands.registerCommand("lego-spikeprime-mindstorms-vscode.showTerminal", showTerminal);
 
     const addFileHeaderCommand = vscode.commands.registerCommand("lego-spikeprime-mindstorms-vscode.addFileHeader", async () => {
-        const editor = vscode.window.activeTextEditor;
+        try {
+            const editor = vscode.window.activeTextEditor;
 
-        if (!editor) {
-            vscode.window.showErrorMessage("Please open a file");
-            return;
-        }
-
-        // Prompt for type
-        let typeSelection = await new Promise<TypeQuickPickItem | undefined>(resolve => {
-            const input = vscode.window.createQuickPick();
-
-            input.title = "Program Type";
-            input.step = 1;
-            input.totalSteps = 3;
-            input.placeholder = "Choose program type";
-            input.items = programTypes;
-
-            input.onDidAccept(async () => {
-                resolve(<TypeQuickPickItem>input.selectedItems[0]);
-                input.hide();
-            });
-
-            input.show();
-        });
-
-        if (!typeSelection) {
-            return;
-        }
-        
-        // Prompt for slot
-        let slots: any[] | undefined;
-
-        if (rpc?.isOpenIn) {
-            const storageStatus = await rpc.sendMessage("get_storage_status");
-            slots = storageStatus.slots;
-        }
-
-        let slotId = await new Promise<number>(resolve => {
-            const quickPickSlots: vscode.QuickPickItem[] = [];
-            for (let index = 0; index < 20; index++) {
-                quickPickSlots.push({
-                    label: index.toString(),
-                    description: slots && slots[index] ? Buffer.from(slots[index].name, "base64").toString("utf-8") : ""
-                });
+            if (!editor) {
+                vscode.window.showErrorMessage("Please open a file");
+                return;
             }
 
-            const input = vscode.window.createQuickPick();
+            // Prompt for type
+            const typeSelection = await promptForProgramType(1, 3);
+            if (!typeSelection) {
+                return;
+            }
 
-            input.title = "Program Slot";
-            input.step = 2;
-            input.totalSteps = 3;
-            input.placeholder = "Choose program slot";
-            input.items = quickPickSlots;
+            // Prompt for slot
+            const slotId = await promptForSlot(2, 3);
+            if (isNaN(slotId)) {
+                return;
+            }
 
-            input.onDidAccept(async () => {
-                let selectedItem = <vscode.QuickPickItem>input.selectedItems[0];
-                resolve(+selectedItem.label);
-                input.hide();
+            // Prompt for auto start
+            const isAutostart = await new Promise<boolean | undefined>(resolve => {
+                const input = vscode.window.createQuickPick();
+
+                input.title = "Autostart";
+                input.step = 3;
+                input.totalSteps = 3;
+                input.placeholder = "Should the program start automatically when uploaded?";
+                input.items = [
+                    { label: "yes" },
+                    { label: "no" },
+                ];
+
+                input.onDidAccept(() => {
+                    const selectedItem = input.selectedItems[0];
+                    resolve(selectedItem.label === "yes");
+                    input.hide();
+                });
+                input.onDidHide(() => {
+                    input.dispose();
+                    resolve(undefined);
+                });
+
+                input.show();
             });
 
-            input.show();
-        });
+            if (isAutostart === undefined) {
+                return;
+            }
 
-        if (slotId == NaN) {
-            return;
-        }
-
-        // Prompt for auto start
-        let isAutostart = await new Promise<boolean | undefined>(resolve => {
-            const input = vscode.window.createQuickPick();
-
-            input.title = "Autostart";
-            input.step = 3;
-            input.totalSteps = 3;
-            input.placeholder = "Should the program start automatically when uploaded?";
-            input.items = [
-                {label: "yes"},
-                {label: "no"}
-            ];
-
-            input.onDidAccept(async () => {
-                let selectedItem = <vscode.QuickPickItem>input.selectedItems[0];
-                resolve(selectedItem.label == "yes");
-                input.hide();
+            editor.edit((editBuilder) => {
+                editBuilder.insert(
+                    new vscode.Position(0, 0),
+                    `# LEGO type:${typeSelection?.type} slot:${slotId}${(isAutostart ? " autostart" : "")}\n\n`,
+                );
             });
-
-            input.show();
-        });
-
-        if (typeof isAutostart === "undefined") {
-            return;
         }
-
-        editor.edit(editBuilder => {
-            editBuilder.insert(
-                new vscode.Position(0, 0),
-                "# LEGO type:" + typeSelection?.type +
-                    " slot:" + slotId +
-                    (isAutostart ? " autostart" : "") +
-                    "\n\n"
-            );
-        });
+        catch (e) {
+            console.error(e);
+            vscode.window.showErrorMessage("Adding File Header Failed!" + (e instanceof Error ? ` ${e.message}` : ""));
+        }
     });
 
     context.subscriptions.push(
@@ -486,4 +432,66 @@ async function updateHubStatusBarItem() {
         hubStatusBarItem.command = Command.ConnectToHub;
     }
 
+}
+
+async function promptForProgramType(currentStep?: number, totalSteps?: number): Promise<TypeQuickPickItem | undefined> {
+    return new Promise<TypeQuickPickItem | undefined>((resolve, reject) => {
+        const input = vscode.window.createQuickPick();
+
+        input.title = "Program Type";
+        input.step = currentStep;
+        input.totalSteps = totalSteps;
+        input.placeholder = "Choose program type";
+        input.items = programTypes;
+
+        input.onDidAccept(() => {
+            resolve(input.selectedItems[0] as TypeQuickPickItem);
+            input.hide();
+        });
+        input.onDidHide(() => {
+            input.dispose();
+            resolve(undefined);
+        });
+
+        input.show();
+    });
+}
+
+async function promptForSlot(currentStep?: number, totalSteps?: number): Promise<number> {
+    let slots: any[] | undefined;
+
+    if (rpc?.isOpenIn) {
+        const storageStatus = await rpc.sendMessage("get_storage_status");
+        slots = storageStatus.slots;
+    }
+
+    return new Promise<number>((resolve, reject) => {
+        const quickPickSlots: vscode.QuickPickItem[] = [];
+        for (let index = 0; index < 20; index++) {
+            quickPickSlots.push({
+                label: index.toString(),
+                description: slots && slots[index] ? Buffer.from(slots[index].name, "base64").toString("utf-8") : "",
+            });
+        }
+
+        const input = vscode.window.createQuickPick();
+
+        input.title = "Program Slot";
+        input.step = currentStep;
+        input.totalSteps = totalSteps;
+        input.placeholder = "Choose program slot";
+        input.items = quickPickSlots;
+
+        input.onDidAccept(() => {
+            const selectedItem = input.selectedItems[0];
+            resolve(+selectedItem.label);
+            input.hide();
+        });
+        input.onDidHide(() => {
+            input.dispose();
+            resolve(NaN);
+        });
+
+        input.show();
+    });
 }
