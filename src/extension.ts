@@ -100,10 +100,17 @@ export function activate(context: vscode.ExtensionContext) {
             return;
         }
 
+        const editor = vscode.window.activeTextEditor;
+
+        if (!editor) {
+            vscode.window.showErrorMessage("Please open a file");
+            return;
+        }
+
         try {
             await vscode.commands.executeCommand("workbench.action.files.save");
 
-            const header = vscode.window.activeTextEditor?.document.lineAt(0).text;
+            const header = editor?.document.lineAt(0).text;
             let slotId: number = NaN;
             let typeSelection: TypeQuickPickItem | undefined;
             let isAutostartIn: boolean = false;
@@ -131,7 +138,7 @@ export function activate(context: vscode.ExtensionContext) {
 
             // Prompt for type
             if (!typeSelection) {
-                typeSelection = await vscode.window.showQuickPick(programTypes);
+                typeSelection = await promptForProgramType();
                 if (!typeSelection) {
                     return;
                 }
@@ -141,23 +148,10 @@ export function activate(context: vscode.ExtensionContext) {
             if (isNaN(slotId)
                 || slotId < 0
                 || slotId > 19) {
-                const storageStatus = await rpc.sendMessage("get_storage_status");
-                const slots = storageStatus.slots;
-                const quickPickSlots: vscode.QuickPickItem[] = [];
-                for (let index = 0; index < 20; index++) {
-                    quickPickSlots.push({
-                        label: index.toString(),
-                        description: slots[index] ? Buffer.from(slots[index].name, "base64").toString("utf-8") : "",
-                    });
-                }
-
-                const slotSelection = await vscode.window.showQuickPick(quickPickSlots);
-
-                if (!slotSelection) {
+                slotId = await promptForSlot();
+                if (isNaN(slotId)) {
                     return;
                 }
-
-                slotId = +slotSelection.label;
             }
 
             await vscode.window.withProgress(
@@ -241,6 +235,70 @@ export function activate(context: vscode.ExtensionContext) {
 
     const showTerminalCommand = vscode.commands.registerCommand("lego-spikeprime-mindstorms-vscode.showTerminal", showTerminal);
 
+    const addFileHeaderCommand = vscode.commands.registerCommand("lego-spikeprime-mindstorms-vscode.addFileHeader", async () => {
+        try {
+            const editor = vscode.window.activeTextEditor;
+
+            if (!editor) {
+                vscode.window.showErrorMessage("Please open a file");
+                return;
+            }
+
+            // Prompt for type
+            const typeSelection = await promptForProgramType(1, 3);
+            if (!typeSelection) {
+                return;
+            }
+
+            // Prompt for slot
+            const slotId = await promptForSlot(2, 3);
+            if (isNaN(slotId)) {
+                return;
+            }
+
+            // Prompt for auto start
+            const isAutostart = await new Promise<boolean | undefined>(resolve => {
+                const input = vscode.window.createQuickPick();
+
+                input.title = "Autostart";
+                input.step = 3;
+                input.totalSteps = 3;
+                input.placeholder = "Should the program start automatically when uploaded?";
+                input.items = [
+                    { label: "yes" },
+                    { label: "no" },
+                ];
+
+                input.onDidAccept(() => {
+                    const selectedItem = input.selectedItems[0];
+                    resolve(selectedItem.label === "yes");
+                    input.hide();
+                });
+                input.onDidHide(() => {
+                    input.dispose();
+                    resolve(undefined);
+                });
+
+                input.show();
+            });
+
+            if (isAutostart === undefined) {
+                return;
+            }
+
+            editor.edit((editBuilder) => {
+                editBuilder.insert(
+                    new vscode.Position(0, 0),
+                    `# LEGO type:${typeSelection?.type} slot:${slotId}${(isAutostart ? " autostart" : "")}\n\n`,
+                );
+            });
+        }
+        catch (e) {
+            console.error(e);
+            vscode.window.showErrorMessage("Adding File Header Failed!" + (e instanceof Error ? ` ${e.message}` : ""));
+        }
+    });
+
     context.subscriptions.push(
         connectToHubCommand,
         disconnectFromHubCommand,
@@ -248,6 +306,7 @@ export function activate(context: vscode.ExtensionContext) {
         startProgramCommand,
         terminateProgramCommand,
         showTerminalCommand,
+        addFileHeaderCommand,
 
         hubStatusBarItem,
     );
@@ -360,17 +419,78 @@ function showTerminal() {
 
 async function updateHubStatusBarItem() {
     if (rpc?.isOpenIn) {
-        // setTimeout(async () => {
         const hubInfo = await rpc.sendMessage("get_hub_info");
         const { firmware, runtime } = hubInfo;
 
         hubStatusBarItem.text = `$(repl) LEGO Hub: Connected (${firmware.version.join(".")} / ${runtime.version.join(".")})`;
         hubStatusBarItem.command = Command.DisconnectFromHub;
-        // }, 2000);
     }
     else {
         hubStatusBarItem.text = "$(debug-disconnect) LEGO Hub: Disconnected";
         hubStatusBarItem.command = Command.ConnectToHub;
     }
 
+    vscode.commands.executeCommand("setContext", "lego-spikeprime-mindstorms-vscode.isConnectedIn", !!rpc?.isOpenIn);
+}
+
+async function promptForProgramType(currentStep?: number, totalSteps?: number): Promise<TypeQuickPickItem | undefined> {
+    return new Promise<TypeQuickPickItem | undefined>((resolve, reject) => {
+        const input = vscode.window.createQuickPick();
+
+        input.title = "Program Type";
+        input.step = currentStep;
+        input.totalSteps = totalSteps;
+        input.placeholder = "Choose program type";
+        input.items = programTypes;
+
+        input.onDidAccept(() => {
+            resolve(input.selectedItems[0] as TypeQuickPickItem);
+            input.hide();
+        });
+        input.onDidHide(() => {
+            input.dispose();
+            resolve(undefined);
+        });
+
+        input.show();
+    });
+}
+
+async function promptForSlot(currentStep?: number, totalSteps?: number): Promise<number> {
+    let slots: any[] | undefined;
+
+    if (rpc?.isOpenIn) {
+        const storageStatus = await rpc.sendMessage("get_storage_status");
+        slots = storageStatus.slots;
+    }
+
+    return new Promise<number>((resolve, reject) => {
+        const quickPickSlots: vscode.QuickPickItem[] = [];
+        for (let index = 0; index < 20; index++) {
+            quickPickSlots.push({
+                label: index.toString(),
+                description: slots && slots[index] ? Buffer.from(slots[index].name, "base64").toString("utf-8") : "",
+            });
+        }
+
+        const input = vscode.window.createQuickPick();
+
+        input.title = "Program Slot";
+        input.step = currentStep;
+        input.totalSteps = totalSteps;
+        input.placeholder = "Choose program slot";
+        input.items = quickPickSlots;
+
+        input.onDidAccept(() => {
+            const selectedItem = input.selectedItems[0];
+            resolve(+selectedItem.label);
+            input.hide();
+        });
+        input.onDidHide(() => {
+            input.dispose();
+            resolve(NaN);
+        });
+
+        input.show();
+    });
 }

@@ -1,110 +1,148 @@
 {
-	"name": "lego-spikeprime-mindstorms-vscode",
-	"displayName": "LEGO SPIKE Prime / MINDSTORMS Robot Inventor Extension",
-	"description": "Helps you connect Lego's SPIKE Prime/MINDSTORMS Robot Inventor",
-	"publisher": "PeterStaev",
-	"version": "1.3.1",
-	"engines": {
-		"vscode": "^1.56.0"
-	},
-	"categories": [
-		"Other"
-	],
-	"activationEvents": [
-		"*"
-	],
-	"main": "./dist/extension",
-	"contributes": {
-		"configuration": [
-			{
-				"title": "LEGO SPIKE Prime / MINDSTORMS Robot Inventor",
-				"properties": {
-					"legoSpikePrimeMindstorms.compileBeforeUpload": {
-						"type": "boolean",
-						"default": false,
-						"description": "Compile PY files to MPY before uploading to the LEGO brick."
-					}
-				}
-			}
-		],
-		"commands": [
-			{
-				"command": "lego-spikeprime-mindstorms-vscode.connectToHub",
-				"title": "LEGO Hub: Connect to Hub"
-			},
-			{
-				"command": "lego-spikeprime-mindstorms-vscode.disconnectFromHub",
-				"title": "LEGO Hub: Disconnect from Hub"
-			},
-			{
-				"command": "lego-spikeprime-mindstorms-vscode.startProgram",
-				"title": "LEGO Hub: Start Program"
-			},
-			{
-				"command": "lego-spikeprime-mindstorms-vscode.terminateProgram",
-				"title": "LEGO Hub: Terminate Running Program"
-			},
-			{
-				"command": "lego-spikeprime-mindstorms-vscode.uploadProgram",
-				"title": "LEGO Hub: Upload Program"
-			},
-			{
-				"command": "lego-spikeprime-mindstorms-vscode.showTerminal",
-				"title": "LEGO Hub: Show Log Terminal"
-			}
-		]
-	},
-	"keywords": [
-		"lego",
-		"mindstorms",
-		"spike",
-		"robot inventor",
-		"prime"
-	],
-	"icon": "images/icon.png",
-	"repository": {
-		"type": "git",
-		"url": "https://github.com/PeterStaev/lego-spikeprime-mindstorms-vscode.git"
-	},
-	"license": "Apache-2.0",
-	"scripts": {
-		"vscode:prepublish": "npm run compile",
-		"compile": "webpack --mode production && npm run copy.binding",
-		"webpack": "webpack --mode production",
-		"pretest": "npm run compile && npm run lint",
-		"lint": "eslint src --ext ts",
-		"test": "node ./out/test/runTest.js",
-		"copy.binding": "rimraf ./lib/binding && mkdirp ./lib/binding && ncp ./.bindings ./lib/binding/",
-		"build.binding": "npx electron-rebuild -v 13.1.7",
-		"test-compile": "tsc -p ./"
-	},
-	"devDependencies": {
-		"@types/glob": "^7.1.3",
-		"@types/mocha": "^8.0.4",
-		"@types/node": "^12.11.7",
-		"@types/serialport": "^8.0.1",
-		"@types/uuid": "^8.3.0",
-		"@types/vscode": "^1.55.0",
-		"@typescript-eslint/eslint-plugin": "^4.14.1",
-		"@typescript-eslint/parser": "^4.14.1",
-		"eslint": "^7.19.0",
-		"eslint-plugin-import": "^2.22.1",
-		"eslint-plugin-prefer-arrow": "^1.2.3",
-		"eslint-plugin-simple-import-sort": "^7.0.0",
-		"glob": "^7.1.6",
-		"mkdirp": "^0.5.5",
-		"mocha": "^8.2.1",
-		"ncp": "^2.0.0",
-		"rimraf": "^3.0.2",
-		"ts-loader": "^9.2.5",
-		"typescript": "^4.1.3",
-		"vscode-test": "^1.5.0",
-		"webpack": "^5.52.0",
-		"webpack-cli": "^4.8.0"
-	},
-	"dependencies": {
-		"@pybricks/mpy-cross-v5": "^2.0.0",
-		"@serialport/parser-readline": "^9.0.7",
-		"serialport": "^9.0.7"
-	}
+  "name": "lego-spikeprime-mindstorms-vscode",
+  "displayName": "LEGO SPIKE Prime / MINDSTORMS Robot Inventor Extension",
+  "description": "Helps you connect Lego's SPIKE Prime/MINDSTORMS Robot Inventor",
+  "publisher": "PeterStaev",
+  "version": "1.3.1",
+  "engines": {
+    "vscode": "^1.56.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "*"
+  ],
+  "main": "./dist/extension",
+  "contributes": {
+    "configuration": [
+      {
+        "title": "LEGO SPIKE Prime / MINDSTORMS Robot Inventor",
+        "properties": {
+          "legoSpikePrimeMindstorms.compileBeforeUpload": {
+            "type": "boolean",
+            "default": false,
+            "description": "Compile PY files to MPY before uploading to the LEGO brick."
+          }
+        }
+      }
+    ],
+    "commands": [
+      {
+        "command": "lego-spikeprime-mindstorms-vscode.connectToHub",
+        "title": "LEGO Hub: Connect to Hub"
+      },
+      {
+        "command": "lego-spikeprime-mindstorms-vscode.disconnectFromHub",
+        "title": "LEGO Hub: Disconnect from Hub"
+      },
+      {
+        "command": "lego-spikeprime-mindstorms-vscode.startProgram",
+        "title": "LEGO Hub: Start Program",
+        "icon": "$(run)"
+      },
+      {
+        "command": "lego-spikeprime-mindstorms-vscode.terminateProgram",
+        "title": "LEGO Hub: Terminate Running Program",
+        "icon": "$(stop)"
+      },
+      {
+        "command": "lego-spikeprime-mindstorms-vscode.uploadProgram",
+        "title": "LEGO Hub: Upload Program",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "lego-spikeprime-mindstorms-vscode.showTerminal",
+        "title": "LEGO Hub: Show Log Terminal",
+        "icon": "$(terminal)"
+      },
+      {
+        "command": "lego-spikeprime-mindstorms-vscode.addFileHeader",
+        "title": "LEGO Hub: Add File Header",
+        "icon": "$(note)"
+      }
+    ],
+    "menus": {
+      "editor/title": [
+        {
+          "command": "lego-spikeprime-mindstorms-vscode.startProgram",
+          "group": "navigation@1",
+          "when": "editorLangId == python && lego-spikeprime-mindstorms-vscode.isConnectedIn"
+        },
+        {
+          "command": "lego-spikeprime-mindstorms-vscode.terminateProgram",
+          "group": "navigation@2",
+          "when": "editorLangId == python && lego-spikeprime-mindstorms-vscode.isConnectedIn"
+        },
+        {
+          "command": "lego-spikeprime-mindstorms-vscode.uploadProgram",
+          "group": "navigation@3",
+          "when": "editorLangId == python && lego-spikeprime-mindstorms-vscode.isConnectedIn"
+        },
+        {
+          "command": "lego-spikeprime-mindstorms-vscode.showTerminal",
+          "group": "navigation@4",
+          "when": "editorLangId == python && lego-spikeprime-mindstorms-vscode.isConnectedIn"
+        },
+        {
+          "command": "lego-spikeprime-mindstorms-vscode.addFileHeader",
+          "group": "navigation@5",
+          "when": "editorLangId == python"
+        }
+      ]
+    }
+  },
+  "keywords": [
+    "lego",
+    "mindstorms",
+    "spike",
+    "robot inventor",
+    "prime"
+  ],
+  "icon": "images/icon.png",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/PeterStaev/lego-spikeprime-mindstorms-vscode.git"
+  },
+  "license": "Apache-2.0",
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "webpack --mode production && npm run copy.binding",
+    "webpack": "webpack --mode production",
+    "pretest": "npm run compile && npm run lint",
+    "lint": "eslint src --ext ts",
+    "test": "node ./out/test/runTest.js",
+    "copy.binding": "rimraf ./lib/binding && mkdirp ./lib/binding && ncp ./.bindings ./lib/binding/",
+    "build.binding": "npx electron-rebuild -v 13.1.7",
+    "test-compile": "tsc -p ./"
+  },
+  "devDependencies": {
+    "@types/glob": "^7.1.3",
+    "@types/mocha": "^8.0.4",
+    "@types/node": "^12.11.7",
+    "@types/serialport": "^8.0.1",
+    "@types/uuid": "^8.3.0",
+    "@types/vscode": "^1.55.0",
+    "@typescript-eslint/eslint-plugin": "^4.14.1",
+    "@typescript-eslint/parser": "^4.14.1",
+    "eslint": "^7.19.0",
+    "eslint-plugin-import": "^2.22.1",
+    "eslint-plugin-prefer-arrow": "^1.2.3",
+    "eslint-plugin-simple-import-sort": "^7.0.0",
+    "glob": "^7.1.6",
+    "mkdirp": "^0.5.5",
+    "mocha": "^8.2.1",
+    "ncp": "^2.0.0",
+    "rimraf": "^3.0.2",
+    "ts-loader": "^9.2.5",
+    "typescript": "^4.1.3",
+    "vscode-test": "^1.5.0",
+    "webpack": "^5.52.0",
+    "webpack-cli": "^4.8.0"
+  },
+  "dependencies": {
+    "@pybricks/mpy-cross-v5": "^2.0.0",
+    "@serialport/parser-readline": "^9.0.7",
+    "serialport": "^9.0.7"
+  }
 }
