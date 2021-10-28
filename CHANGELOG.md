@@ -1,5 +1,8 @@
 # Change Log
 
+## 1.4.0 - 2021-10-29
+* Add title menu buttons for easier access to commands
+
 ## 1.3.1 - 2021-09-25
 * Enhance prnting to correct new lines and bare printing numbers
 * Fix auto-uploading of programs to slot 0
