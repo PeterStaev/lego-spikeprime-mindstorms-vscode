@@ -38,25 +38,54 @@
 			},
 			{
 				"command": "lego-spikeprime-mindstorms-vscode.startProgram",
-				"title": "LEGO Hub: Start Program"
+				"title": "LEGO Hub: Start Program",
+				"icon": "$(run)"
 			},
 			{
 				"command": "lego-spikeprime-mindstorms-vscode.terminateProgram",
-				"title": "LEGO Hub: Terminate Running Program"
+				"title": "LEGO Hub: Terminate Running Program",
+				"icon": "$(stop)"
 			},
 			{
 				"command": "lego-spikeprime-mindstorms-vscode.uploadProgram",
-				"title": "LEGO Hub: Upload Program"
+				"title": "LEGO Hub: Upload Program",
+				"icon": "$(refresh)"
 			},
 			{
 				"command": "lego-spikeprime-mindstorms-vscode.showTerminal",
-				"title": "LEGO Hub: Show Log Terminal"
+				"title": "LEGO Hub: Show Log Terminal",
+				"icon": "$(terminal)"
 			},
 			{
 				"command": "lego-spikeprime-mindstorms-vscode.addFileHeader",
-				"title": "LEGO Hub: Add File Header"
+				"title": "LEGO Hub: Add File Header",
+				"icon": "$(archive)"
 			}
-		]
+		],
+		"menus": {
+			"editor/title": [
+				{
+					"command": "lego-spikeprime-mindstorms-vscode.startProgram",
+					"group": "navigation@1"
+				},
+				{
+					"command": "lego-spikeprime-mindstorms-vscode.terminateProgram",
+					"group": "navigation@2"
+				},
+				{
+					"command": "lego-spikeprime-mindstorms-vscode.uploadProgram",
+					"group": "navigation@3"
+				},
+				{
+					"command": "lego-spikeprime-mindstorms-vscode.showTerminal",
+					"group": "navigation@4"
+				},
+				{
+					"command": "lego-spikeprime-mindstorms-vscode.addFileHeader",
+					"group": "navigation@5"
+				}
+			]
+		}
 	},
 	"keywords": [
 		"lego",
