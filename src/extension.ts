@@ -100,10 +100,17 @@ export function activate(context: vscode.ExtensionContext) {
             return;
         }
 
+        const editor = vscode.window.activeTextEditor;
+
+        if (!editor) {
+            vscode.window.showErrorMessage("Please open a file");
+            return;
+        }
+
         try {
             await vscode.commands.executeCommand("workbench.action.files.save");
 
-            const header = vscode.window.activeTextEditor?.document.lineAt(0).text;
+            const header = editor?.document.lineAt(0).text;
             let slotId: number = NaN;
             let typeSelection: TypeQuickPickItem | undefined;
             let isAutostartIn: boolean = false;
