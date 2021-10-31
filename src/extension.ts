@@ -148,7 +148,7 @@ export function activate(context: vscode.ExtensionContext) {
             if (isNaN(slotId)
                 || slotId < 0
                 || slotId > 19) {
-                slotId = await promptForSlot();
+                slotId = await promptForSlot(true);
                 if (isNaN(slotId)) {
                     return;
                 }
@@ -251,7 +251,7 @@ export function activate(context: vscode.ExtensionContext) {
             }
 
             // Prompt for slot
-            const slotId = await promptForSlot(2, 3);
+            const slotId = await promptForSlot(false, 2, 3);
             if (isNaN(slotId)) {
                 return;
             }
@@ -456,10 +456,10 @@ async function promptForProgramType(currentStep?: number, totalSteps?: number): 
     });
 }
 
-async function promptForSlot(currentStep?: number, totalSteps?: number): Promise<number> {
+async function promptForSlot(isUseStorageStatusIn?: boolean, currentStep?: number, totalSteps?: number): Promise<number> {
     let slots: any[] | undefined;
 
-    if (rpc?.isOpenIn) {
+    if (isUseStorageStatusIn && rpc?.isOpenIn) {
         const storageStatus = await rpc.sendMessage("get_storage_status");
         slots = storageStatus.slots;
     }

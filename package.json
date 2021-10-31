@@ -3,7 +3,7 @@
   "displayName": "LEGO SPIKE Prime / MINDSTORMS Robot Inventor Extension",
   "description": "Helps you connect Lego's SPIKE Prime/MINDSTORMS Robot Inventor",
   "publisher": "PeterStaev",
-  "version": "1.4.0",
+  "version": "1.4.1",
   "engines": {
     "vscode": "^1.56.0"
   },
