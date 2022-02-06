@@ -61,7 +61,7 @@ export class Rpc {
                 else if (message) {
                     switch (message) {
                         case "userProgram.print":
-                            logger?.log(Buffer.from(json!["p"]["value"], "base64").toString());
+                            logger?.log(Buffer.from(json!["p"]["value"], "base64").toString().replace(/\n/gi, "\r\n"));
                             this.sendResponse(json!["i"]);
                             break;
 
