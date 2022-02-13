@@ -23,6 +23,11 @@
             "type": "boolean",
             "default": false,
             "description": "Compile PY files to MPY before uploading to the LEGO brick."
+          },
+          "legoSpikePrimeMindstorms.commandTimeoutSeconds": {
+            "type": "number",
+            "default": 30,
+            "description": "Timeout in seconds after which the connection/command will be cancelled."
           }
         }
       }

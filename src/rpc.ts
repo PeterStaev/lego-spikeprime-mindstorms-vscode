@@ -1,5 +1,6 @@
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 import * as SerialPort from "serialport";
+import * as vscode from "vscode";
 
 import { Logger } from "./logger";
 import { getRandomString } from "./utils";
@@ -89,12 +90,14 @@ export class Rpc {
             this._serialPort.open((err) => {
                 if (err) {
                     reject(err);
+                    clearTimeout(timeout);
                 }
                 else {
                     const checkIsReady = (data: string) => {
                         try {
                             JSON.parse(data);
                             this._parser.off("data", checkIsReady);
+                            clearTimeout(timeout);
                             resolve();
                         }
                         catch (e) {
@@ -105,6 +108,12 @@ export class Rpc {
                     this._parser.on("data", checkIsReady);
                 }
             });
+
+            // Command timeout
+            const timeout = setTimeout(() => {
+                reject("Connection timed out!");
+                void this.close();
+            }, (vscode.workspace.getConfiguration().get<number>("legoSpikePrimeMindstorms.commandTimeoutSeconds") || 30) * 1000);
         });
     }
 
@@ -133,6 +142,12 @@ export class Rpc {
             this._serialPort.write(Buffer.from(JSON.stringify(msg)));
             this._serialPort.write(Buffer.from("\r"));
             this._serialPort.drain();
+
+            // Command timeout
+            setTimeout(() => {
+                this._pendingMessagesPromises.delete(id);
+                reject("Command timed out!");
+            }, (vscode.workspace.getConfiguration().get<number>("legoSpikePrimeMindstorms.commandTimeoutSeconds") || 30) * 1000);
         });
     }
 
