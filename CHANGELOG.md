@@ -1,5 +1,9 @@
 # Change Log
 
+## 1.5.0 - 2022-02-13
+* Add timeout to commands executed on the hub. Default is 30 seconds and can be changed under vscode settings. 
+* Fix `print` not printing correctly new lines in console. 
+
 ## 1.4.0 - 2021-10-29
 * Add title menu buttons for easier access to commands
 
