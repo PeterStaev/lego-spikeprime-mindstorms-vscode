@@ -52,7 +52,7 @@ For example, if I want the program to be uploaded as an advanced python program 
 
 ## Known Issues
 
-* When using Bluetooth and you have many programs stored on the brick it stops responding to querying slot info. You should eiher use USB connection or avoid using commands that wuery slot info - for example you can completely avoid them by using the automatic upload comment in your python files. 
+* When using Bluetooth and you have many programs stored on the brick it stops responding to querying slot info. You should eiher use USB connection or avoid using commands that query slot info - for example you can completely avoid them by using the automatic upload comment in your python files. 
 
 ## Credits
 
