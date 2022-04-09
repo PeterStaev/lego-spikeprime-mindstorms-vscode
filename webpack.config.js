@@ -21,8 +21,8 @@ const config = {
     externals: [
         {
             vscode: "commonjs vscode", // the vscode-module is created on-the-fly and must be excluded. Add other modules that cannot be webpack'ed, 📖 -> https://webpack.js.org/configuration/externals/
+            "@serialport/bindings-cpp": "commonjs @serialport/bindings-cpp",
         },
-        "bindings",
         "@pybricks/mpy-cross-v5",
     ],
     resolve: {
