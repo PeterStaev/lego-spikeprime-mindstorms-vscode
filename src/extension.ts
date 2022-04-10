@@ -4,7 +4,7 @@ import * as mpy from "@pybricks/mpy-cross-v5";
 
 import * as fs from "fs";
 import * as path from "path";
-import * as serialport from "serialport";
+import { SerialPort } from "serialport";
 import { Readable } from "stream";
 import * as vscode from "vscode";
 
@@ -47,7 +47,7 @@ export function activate(context: vscode.ExtensionContext) {
 
     const connectToHubCommand = vscode.commands.registerCommand(Command.ConnectToHub, async () => {
         try {
-            const ports = await serialport.list();
+            const ports = await SerialPort.list();
             let location = context.globalState.get<string>("lastLocation");
             const quickPickList = ports.filter((item) => item.path !== location).map((item) => ({ label: item.path }));
             if (location) {

@@ -1,5 +1,9 @@
 # Change Log
 
+## 1.6.0 - 2022-04-10
+* Update to support vscode 1.66
+* Updated SerialPort dependencies which should make the plugin run without problem on all environments and future versions of vscode because of the provide NAPI bindings. 
+
 ## 1.5.0 - 2022-02-13
 * Add timeout to commands executed on the hub. Default is 30 seconds and can be changed under vscode settings. 
 * Fix `print` not printing correctly new lines in console. 

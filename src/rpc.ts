@@ -1,5 +1,7 @@
 // eslint-disable-next-line @typescript-eslint/no-var-requires
-import * as SerialPort from "serialport";
+import { ReadlineParser } from "@serialport/parser-readline";
+
+import { SerialPort } from "serialport";
 import * as vscode from "vscode";
 
 import { Logger } from "./logger";
@@ -11,16 +13,17 @@ export class Rpc {
     }
 
     private _serialPort: SerialPort;
-    private _parser: SerialPort.parsers.Readline;
+    private _parser: ReadlineParser;
     private _pendingMessagesPromises = new Map<string, [(result: any) => void, (e: string) => void]>();
 
     constructor(location: string, logger: Logger) {
-        this._serialPort = new SerialPort(location, {
+        this._serialPort = new SerialPort({
+            path: location,
             baudRate: 115200,
             autoOpen: false,
         });
         this._serialPort.setDefaultEncoding("utf-8");
-        this._parser = this._serialPort.pipe(new SerialPort.parsers.Readline({ delimiter: "\r" }));
+        this._parser = this._serialPort.pipe(new ReadlineParser({ delimiter: "\r" }));
         this._parser.on("data", (data: string) => {
             let json: { [key: string]: any };
             let isPlainPrintIn: boolean = false;
