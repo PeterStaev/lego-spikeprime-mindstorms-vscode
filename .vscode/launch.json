@@ -16,7 +16,7 @@
 				"${workspaceFolder}/dist/**/*.js",
 				"${workspaceFolder}/lib/binding/**"
 			],
-			"preLaunchTask": "npm: webpack"
+			"preLaunchTask": "npm: compile"
 		},
 		{
 			"name": "Extension Tests",

@@ -4,4 +4,5 @@ lib
 node_modules
 .vscode-test/
 *.vsix
+prebuilds
 .DS_Store
