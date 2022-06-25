@@ -28,6 +28,8 @@ This gives you access to an async code execution and event notifications that ar
 
 The advanced programs mus follow a specific template in order for them to execute correctly:
 ```python
+from runtime.virtualmachine import VirtualMachine # Needed for newer hub versions (3.1.43+)
+
 async def on_start(vm, stack):
     print("This is the spot of your code")
 
