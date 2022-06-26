@@ -71,6 +71,9 @@ The parameter has the following meaning:
 ## Handling button states
 You can attach an async handler for each of the 3 buttons and handle if they were pressed or released. Note: since the pressing the center button actually cancels the running program you should put only cleanup code in that handler. 
 ```python
+async def handler(vm, stack):
+    print("Left button pressed")
+    
 def setup(rpc, system, stop):
     vm = VirtualMachine(rpc, system, stop, "<program_name>")
     #...
