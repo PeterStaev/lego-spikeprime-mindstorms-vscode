@@ -83,6 +83,32 @@ def setup(rpc, system, stop):
 ```
 The third arg is the button and you can use `"left"`, `"right"` or `"center"`. The fourth arg should be either `"pressed"` or `"released"`
 
+## Doing something when a condition is met (async)
+```python
+from time import sleep
+
+counter = 0
+
+async def handler(vm, stack):
+    print("Counter bigger than 3")
+
+def condition(vm, stack):
+    return counter > 3
+
+async def on_start(vm, stack):
+    for i in range(4):
+        counter += 1
+        sleep(0.5)
+
+def setup(rpc, system, stop):
+    vm = VirtualMachine(rpc, system, stop, "<program_name>")
+    #...
+    vm.register_on_condition("<unique_name>", handler, condition)
+    #...
+    return vm
+```
+The condition function has to be non-async, while the handler has to be async
+
 ## Events
 In order to handle events you need to subscribe to listen to some event name. This is done in the `setup` function like this:
 ```python
