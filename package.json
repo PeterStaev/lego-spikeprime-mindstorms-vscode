@@ -14,6 +14,7 @@
     "onStartupFinished"
   ],
   "main": "./dist/extension",
+  "browser": "./dist/web/extension.js",
   "contributes": {
     "configuration": [
       {
@@ -130,7 +131,8 @@
     "test": "node ./out/test/runTest.js",
     "update-eslint": "npx npm-check-updates --upgrade --filter \"/.*eslint.*/\"",
     "update-serialport": "npx npm-check-updates --upgrade --filter \"/.*serialport.*/\"",
-    "test-compile": "tsc -p ./"
+    "test-compile": "tsc -p ./",
+    "open-in-browser": "vscode-test-web --open-devtools --extensionDevelopmentPath=. ."
   },
   "devDependencies": {
     "@eslint/compat": "^1.2.9",
