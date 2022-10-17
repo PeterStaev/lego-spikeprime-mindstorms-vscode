@@ -135,3 +135,6 @@ Note that the code in the handler is executed asynchroniously. In case you want 
 while any(stack.is_active() for stack in stacks):
     yield
 ```
+
+## Other Goodies
+[Azzie](https://github.com/azzieg) has decoded most of the interesting word blocks! You can checkout his resources [here](https://github.com/azzieg/mindstorms-inventor/tree/main/word_blocks). 
