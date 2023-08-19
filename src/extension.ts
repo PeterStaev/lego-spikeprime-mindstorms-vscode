@@ -3,6 +3,7 @@
 import * as mpy from "@pybricks/mpy-cross-v5";
 
 import * as fs from "fs";
+import * as os from 'os';
 import * as path from "path";
 import { SerialPort } from "serialport";
 import { Readable } from "stream";
@@ -41,6 +42,8 @@ const enum Command {
 }
 
 export function activate(context: vscode.ExtensionContext) {
+    vscode.window.showInformationMessage("lego-spikeprime-mindstorms-vscode extension activeted");
+
     hubStatusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 1);
     hubStatusBarItem.show();
     updateHubStatusBarItem();
@@ -320,18 +323,31 @@ export function deactivate() {
 }
 
 async function performUploadProgram(slotId: number, type: "python" | "scratch", progress?: vscode.Progress<{ increment: number }>) {
+    const currentlyOpenTabFileUri = vscode.window.activeTextEditor?.document.uri;
     const currentlyOpenTabFilePath = vscode.window.activeTextEditor?.document.fileName;
     const config = vscode.workspace.getConfiguration();
 
-    if (currentlyOpenTabFilePath) {
+    if (currentlyOpenTabFilePath && currentlyOpenTabFileUri) {
         const currentlyOpenTabFileName = path.basename(currentlyOpenTabFilePath).replace(path.extname(currentlyOpenTabFilePath), "");
         const stats = fs.statSync(currentlyOpenTabFilePath);
+
+        const assembledFile = assembleFile(currentlyOpenTabFileUri.fsPath);
+
+        let assembledFilePath
+        if (config.get("legoSpikePrimeMindstorms.saveFileToUpload")){
+            assembledFilePath = path.join(currentlyOpenTabFilePath, currentlyOpenTabFileName + ".assembled.py");
+            
+        }else{
+            assembledFilePath =path.join(os.tmpdir(), currentlyOpenTabFileName + ".assembled.py");
+        }
+        
+        fs.writeFileSync(assembledFilePath, assembledFile, "utf8");
 
         let compileResult: mpy.CompileResult | undefined;
 
         if (config.get("legoSpikePrimeMindstorms.compileBeforeUpload")) {
-            compileResult = await mpy.compile(path.basename(currentlyOpenTabFilePath),
-                fs.readFileSync(currentlyOpenTabFilePath).toString("utf-8"),
+            compileResult = await mpy.compile(path.basename(assembledFilePath),
+                fs.readFileSync(assembledFilePath).toString("utf-8"),
                 ["-municode"]
             );
 
@@ -494,3 +510,63 @@ async function promptForSlot(isUseStorageStatusIn?: boolean, currentStep?: numbe
         input.show();
     });
 }
+
+/**
+ * The provided file should be assembled by replacing the import statements following the command "#include" with the content of the imported local python file.
+ *
+ * @param filePath The path to the file to be assembled.
+ * @returns Uint8Array containing the assembled file content.
+ */
+function assembleFile(filePath: string): Uint8Array | undefined {
+    try {
+        vscode.window.showErrorMessage("WE ARIVED AT OUR CODE!");
+        const fileContent = fs.readFileSync(filePath, "utf-8");
+        const lines = fileContent.split("\n");
+        let assembledLines: string[] = [];
+        const includedFiles: string[] = [];
+
+        assembledLines=assembledLines.concat(lines);
+        
+        let startLine = 0;
+        let finish =false;
+        while(!finish){
+            for (let index = startLine; index < assembledLines.length; index++) {
+                const line = assembledLines[index];
+
+                if (line.trim().startsWith("from")) {
+                    let includePath = line.trim().substring("from".length).trim() + ".py";
+                    includePath = path.resolve(path.dirname(filePath), includePath);
+                    assembledLines.splice(index, 2);
+                    if(!(includedFiles.some(includedFiles => includedFiles === includePath))){
+                        startLine = index;
+                        includedFiles.push(includePath)
+                        try {
+                            const includedContent = fs.readFileSync(includePath, "utf-8");
+                            const includedContentSplitted = includedContent.split("\n");
+                            assembledLines=assembledLines.slice(0, index).concat(includedContentSplitted, assembledLines.slice(index));
+        
+                        }
+                        catch (includeError) {
+                            vscode.window.showErrorMessage("Error reading included file:" + includeError);
+                        }
+                        finish=false;
+                        break;
+                    }
+                }
+                finish=true;
+            }
+        }
+        
+
+        const extendedContent = assembledLines.join("\n");
+        const extendedBuffer = Buffer.from(extendedContent, "utf-8");
+
+        return new Uint8Array(extendedBuffer);
+    }
+    catch (error) {
+        console.error("Error extending file:", error);
+        vscode.window.showErrorMessage("Error extending file: " + error);
+        return undefined;
+    }
+}
+

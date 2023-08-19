@@ -24,6 +24,11 @@
             "default": false,
             "description": "Compile PY files to MPY before uploading to the LEGO brick."
           },
+          "legoSpikePrimeMindstorms.saveFileToUpload": {
+            "type": "boolean",
+            "default": false,
+            "description": "Saves the result after importing files into current script."
+          },
           "legoSpikePrimeMindstorms.commandTimeoutSeconds": {
             "type": "number",
             "default": 30,
