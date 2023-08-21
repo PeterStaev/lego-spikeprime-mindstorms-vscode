@@ -26,7 +26,7 @@
           },
           "legoSpikePrimeMindstorms.saveFileToUpload": {
             "type": "boolean",
-            "default": false,
+            "default": true,
             "description": "Saves the result after importing files into current script."
           },
           "legoSpikePrimeMindstorms.commandTimeoutSeconds": {

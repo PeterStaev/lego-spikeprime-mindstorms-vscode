@@ -43,6 +43,10 @@ const enum Command {
 
 export function activate(context: vscode.ExtensionContext) {
     vscode.window.showInformationMessage("lego-spikeprime-mindstorms-vscode extension activeted");
+    const currentlyOpenTabFileUri = vscode.window.activeTextEditor?.document.uri;
+    if (currentlyOpenTabFileUri) {
+        const assembledFile = assembleFile(currentlyOpenTabFileUri.fsPath);
+    }
 
     hubStatusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 1);
     hubStatusBarItem.show();
@@ -511,6 +515,16 @@ async function promptForSlot(isUseStorageStatusIn?: boolean, currentStep?: numbe
     });
 }
 
+
+function fileExists(filePath: string): boolean {
+    try {
+        fs.accessSync(filePath, fs.constants.F_OK);
+        return true;
+    } catch (err) {
+        return false;
+    }
+}
+
 /**
  * The provided file should be assembled by replacing the import statements following the command "#include" with the content of the imported local python file.
  *
@@ -528,36 +542,45 @@ function assembleFile(filePath: string): Uint8Array | undefined {
         assembledLines=assembledLines.concat(lines);
         
         let startLine = 0;
-        let finish =false;
+        let finish = false;
         while(!finish){
             for (let index = startLine; index < assembledLines.length; index++) {
-                const line = assembledLines[index];
-
-                if (line.trim().startsWith("from")) {
-                    let includePath = line.trim().substring("from".length).trim() + ".py";
-                    includePath = path.resolve(path.dirname(filePath), includePath);
-                    assembledLines.splice(index, 2);
-                    if(!(includedFiles.some(includedFiles => includedFiles === includePath))){
-                        startLine = index;
-                        includedFiles.push(includePath)
-                        try {
-                            const includedContent = fs.readFileSync(includePath, "utf-8");
-                            const includedContentSplitted = includedContent.split("\n");
-                            assembledLines=assembledLines.slice(0, index).concat(includedContentSplitted, assembledLines.slice(index));
-        
-                        }
-                        catch (includeError) {
-                            vscode.window.showErrorMessage("Error reading included file:" + includeError);
-                        }
-                        finish=false;
-                        break;
-                    }
-                }
                 finish=true;
+                const line = assembledLines[index];
+                if (!(line.trim().startsWith("from")))
+                    continue; 
+
+                const pattern = /from\s+([\w\d_]+)\s+import\s+\*/;
+                const match = line.match(pattern);
+
+                if (!(match && match[1]))
+                    continue;
+                
+                let includePath = match[1] + ".py";
+                includePath = path.resolve(path.dirname(filePath), includePath); 
+                if(!fileExists(includePath)){
+                    vscode.window.showErrorMessage("File: " + includePath + " not found");
+                    continue;
+                }
+                assembledLines.splice(index, 1);    
+                if((includedFiles.some(includedFiles => includedFiles === includePath)))
+                    continue;
+                try {
+                    startLine = index;
+                    
+                    includedFiles.push(includePath)
+                    const includedContent = fs.readFileSync(includePath, "utf-8");
+                    const includedContentSplitted = includedContent.split("\n");
+                    assembledLines=assembledLines.slice(0, index).concat(includedContentSplitted, assembledLines.slice(index));
+                    finish=false; 
+                    break;
+                }
+                catch (includeError) {
+                    vscode.window.showErrorMessage("Error reading included file:" + includeError);
+                }              
             }
         }
         
-
         const extendedContent = assembledLines.join("\n");
         const extendedBuffer = Buffer.from(extendedContent, "utf-8");
 
