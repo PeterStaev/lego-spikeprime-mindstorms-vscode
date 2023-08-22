@@ -43,10 +43,6 @@ const enum Command {
 
 export function activate(context: vscode.ExtensionContext) {
     vscode.window.showInformationMessage("lego-spikeprime-mindstorms-vscode extension activeted");
-    const currentlyOpenTabFileUri = vscode.window.activeTextEditor?.document.uri;
-    if (currentlyOpenTabFileUri) {
-        const assembledFile = assembleFile(currentlyOpenTabFileUri.fsPath);
-    }
 
     hubStatusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 1);
     hubStatusBarItem.show();
@@ -339,7 +335,7 @@ async function performUploadProgram(slotId: number, type: "python" | "scratch", 
 
         let assembledFilePath
         if (config.get("legoSpikePrimeMindstorms.saveFileToUpload")){
-            assembledFilePath = path.join(currentlyOpenTabFilePath, currentlyOpenTabFileName + ".assembled.py");
+            assembledFilePath = path.join(path.dirname(currentlyOpenTabFilePath), currentlyOpenTabFileName + ".assembled.py");
             
         }else{
             assembledFilePath =path.join(os.tmpdir(), currentlyOpenTabFileName + ".assembled.py");
@@ -402,7 +398,7 @@ async function performUploadProgram(slotId: number, type: "python" | "scratch", 
             }
         }
         else {
-            const stream = fs.createReadStream(currentlyOpenTabFilePath, { highWaterMark: blockSize });
+            const stream = fs.createReadStream(assembledFilePath, { highWaterMark: blockSize });
             for await (const data of stream) {
                 progress?.report({ increment });
                 await rpc.sendMessage(
@@ -533,7 +529,6 @@ function fileExists(filePath: string): boolean {
  */
 function assembleFile(filePath: string): Uint8Array | undefined {
     try {
-        vscode.window.showErrorMessage("WE ARIVED AT OUR CODE!");
         const fileContent = fs.readFileSync(filePath, "utf-8");
         const lines = fileContent.split("\n");
         let assembledLines: string[] = [];
