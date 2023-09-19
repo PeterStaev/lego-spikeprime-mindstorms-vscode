@@ -540,7 +540,7 @@ function assembleFile(filePath: string): Uint8Array | undefined {
                 let includePath = match[1] + ".py";
                 includePath = path.resolve(path.dirname(filePath), includePath); 
                 if(!fs.existsSync(includePath)){
-                    vscode.window.showErrorMessage("File: " + includePath + " not found");
+                    vscode.window.showWarningMessage("File: " + includePath + " not found");
                     continue;
                 }
                 assembledLines.splice(index, 1);    
