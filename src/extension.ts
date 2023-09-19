@@ -523,16 +523,15 @@ function assembleFile(filePath: string): Uint8Array | undefined {
         let assembledLines: string[] = fileContent.split("\n");
         const includedFiles: string[] = [];
 
+        const pattern = /from\s+([\w\d_]+)\s+import\s+\*\s/;
+
         let startLine = 0;
         let finish = false;
         while(!finish){
             for (let index = startLine; index < assembledLines.length; index++) {
                 finish=true;
                 const line = assembledLines[index];
-                if (!(line.trim().startsWith("from")))
-                    continue; 
 
-                const pattern = /from\s+([\w\d_]+)\s+import\s+\*/;
                 const match = line.match(pattern);
 
                 if (!(match && match[1]))
