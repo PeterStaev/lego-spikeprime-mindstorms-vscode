@@ -520,12 +520,9 @@ async function promptForSlot(isUseStorageStatusIn?: boolean, currentStep?: numbe
 function assembleFile(filePath: string): Uint8Array | undefined {
     try {
         const fileContent = fs.readFileSync(filePath, "utf-8");
-        const lines = fileContent.split("\n");
-        let assembledLines: string[] = [];
+        let assembledLines: string[] = fileContent.split("\n");
         const includedFiles: string[] = [];
 
-        assembledLines=assembledLines.concat(lines);
-        
         let startLine = 0;
         let finish = false;
         while(!finish){
