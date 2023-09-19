@@ -518,7 +518,7 @@ async function promptForSlot(isUseStorageStatusIn?: boolean, currentStep?: numbe
 function assembleFile(filePath: string): Uint8Array | undefined {
     try {
         const fileContent = fs.readFileSync(filePath, "utf-8");
-        let assembledLines: string[] = fileContent.split("\n");
+        const assembledLines: string[] = fileContent.split("\n");
         const includedFiles: string[] = [];
 
         const pattern = /^from\s+([\w\d_]+)\s+import\s+\*\s/;
@@ -548,9 +548,8 @@ function assembleFile(filePath: string): Uint8Array | undefined {
                 includedFiles.push(includePath);
                 const includedContent = fs.readFileSync(includePath, "utf-8");
                 const includedContentSplitted = includedContent.split("\n");
-                assembledLines=assembledLines.slice(0, index).concat(includedContentSplitted, assembledLines.slice(index));
+                assembledLines.splice(index, 0, ...includedContentSplitted);
                 index--;
-                continue;
             }
             catch (includeError) {
                 vscode.window.showErrorMessage("Error reading included file:" + includeError);
