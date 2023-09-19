@@ -42,8 +42,6 @@ const enum Command {
 }
 
 export function activate(context: vscode.ExtensionContext) {
-    vscode.window.showInformationMessage("lego-spikeprime-mindstorms-vscode extension activeted");
-
     hubStatusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 1);
     hubStatusBarItem.show();
     updateHubStatusBarItem();
@@ -523,45 +521,42 @@ function assembleFile(filePath: string): Uint8Array | undefined {
         let assembledLines: string[] = fileContent.split("\n");
         const includedFiles: string[] = [];
 
-        const pattern = /from\s+([\w\d_]+)\s+import\s+\*\s/;
+        const pattern = /^from\s+([\w\d_]+)\s+import\s+\*\s/;
 
         let startLine = 0;
-        let finish = false;
-        while(!finish){
-            for (let index = startLine; index < assembledLines.length; index++) {
-                finish=true;
-                const line = assembledLines[index];
 
-                const match = line.match(pattern);
+        for (let index = startLine; index < assembledLines.length; index++) {
+            const line = assembledLines[index];
 
-                if (!match?.[1])
-                    continue;
-                
-                let includePath = match[1] + ".py";
-                includePath = path.resolve(path.dirname(filePath), includePath); 
-                if(!fs.existsSync(includePath)){
-                    vscode.window.showWarningMessage("File: " + includePath + " not found");
-                    continue;
-                }
-                assembledLines.splice(index, 1);    
-                if((includedFiles.some(includedFiles => includedFiles === includePath)))
-                    continue;
-                try {
-                    startLine = index;
-                    
-                    includedFiles.push(includePath)
-                    const includedContent = fs.readFileSync(includePath, "utf-8");
-                    const includedContentSplitted = includedContent.split("\n");
-                    assembledLines = assembledLines.splice(index, 0, ...includedContentSplitted);
-                    finish=false; 
-                    break;
-                }
-                catch (includeError) {
-                    vscode.window.showErrorMessage("Error reading included file:" + includeError);
-                }              
+            const match = line.match(pattern);
+
+            if (!match?.[1])
+                continue;
+
+            let includePath = match[1] + ".py";
+            includePath = path.resolve(path.dirname(filePath), includePath);
+            if(!fs.existsSync(includePath)){
+                vscode.window.showWarningMessage("File: " + includePath + " not found");
+                continue;
+            }
+            assembledLines.splice(index, 1);
+            if((includedFiles.some(includedFile => includedFile === includePath)))
+                continue;
+            try {
+                startLine = index;
+
+                includedFiles.push(includePath);
+                const includedContent = fs.readFileSync(includePath, "utf-8");
+                const includedContentSplitted = includedContent.split("\n");
+                assembledLines=assembledLines.slice(0, index).concat(includedContentSplitted, assembledLines.slice(index));
+                index--;
+                continue;
+            }
+            catch (includeError) {
+                vscode.window.showErrorMessage("Error reading included file:" + includeError);
             }
         }
-        
+
         const extendedContent = assembledLines.join("\n");
         const extendedBuffer = Buffer.from(extendedContent, "utf-8");
 
