@@ -534,7 +534,7 @@ function assembleFile(filePath: string): Uint8Array | undefined {
 
                 const match = line.match(pattern);
 
-                if (!(match && match[1]))
+                if (!match?.[1])
                     continue;
                 
                 let includePath = match[1] + ".py";
