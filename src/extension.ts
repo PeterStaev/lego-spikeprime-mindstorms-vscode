@@ -511,16 +511,6 @@ async function promptForSlot(isUseStorageStatusIn?: boolean, currentStep?: numbe
     });
 }
 
-
-function fileExists(filePath: string): boolean {
-    try {
-        fs.accessSync(filePath, fs.constants.F_OK);
-        return true;
-    } catch (err) {
-        return false;
-    }
-}
-
 /**
  * The provided file should be assembled by replacing the import statements following the command "#include" with the content of the imported local python file.
  *
@@ -553,7 +543,7 @@ function assembleFile(filePath: string): Uint8Array | undefined {
                 
                 let includePath = match[1] + ".py";
                 includePath = path.resolve(path.dirname(filePath), includePath); 
-                if(!fileExists(includePath)){
+                if(!fs.existsSync(includePath)){
                     vscode.window.showErrorMessage("File: " + includePath + " not found");
                     continue;
                 }
