@@ -552,7 +552,7 @@ function assembleFile(filePath: string): Uint8Array | undefined {
                     includedFiles.push(includePath)
                     const includedContent = fs.readFileSync(includePath, "utf-8");
                     const includedContentSplitted = includedContent.split("\n");
-                    assembledLines=assembledLines.slice(0, index).concat(includedContentSplitted, assembledLines.slice(index));
+                    assembledLines = assembledLines.splice(index, 0, ...includedContentSplitted);
                     finish=false; 
                     break;
                 }
