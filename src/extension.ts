@@ -3,7 +3,7 @@
 import * as mpy from "@pybricks/mpy-cross-v5";
 
 import * as fs from "fs";
-import * as os from 'os';
+import * as os from "os";
 import * as path from "path";
 import { SerialPort } from "serialport";
 import { Readable } from "stream";
@@ -333,14 +333,14 @@ async function performUploadProgram(slotId: number, type: "python" | "scratch", 
 
         const assembledFile = assembleFile(currentlyOpenTabFileUri.fsPath);
 
-        let assembledFilePath
+        let assembledFilePath;
         if (config.get("legoSpikePrimeMindstorms.saveFileToUpload")){
             assembledFilePath = path.join(path.dirname(currentlyOpenTabFilePath), currentlyOpenTabFileName + ".assembled.py");
-            
-        }else{
+        }
+        else{
             assembledFilePath =path.join(os.tmpdir(), currentlyOpenTabFileName + ".assembled.py");
         }
-        
+
         fs.writeFileSync(assembledFilePath, assembledFile, "utf8");
 
         let compileResult: mpy.CompileResult | undefined;
