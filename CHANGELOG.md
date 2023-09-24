@@ -1,5 +1,9 @@
 # Change Log
 
+## 1.7.0 - 2022-04-10
+* Multifile support (#58)
+* Updated SerialPort dependencies
+
 ## 1.6.0 - 2022-04-10
 * Update to support vscode 1.66
 * Updated SerialPort dependencies which should make the plugin run without problem on all environments and future versions of vscode because of the provide NAPI bindings. 
