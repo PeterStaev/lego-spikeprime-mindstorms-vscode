@@ -3,6 +3,7 @@
 import * as mpy from "@pybricks/mpy-cross-v5";
 
 import * as fs from "fs";
+import * as os from "os";
 import * as path from "path";
 import { SerialPort } from "serialport";
 import { Readable } from "stream";
@@ -320,18 +321,31 @@ export function deactivate() {
 }
 
 async function performUploadProgram(slotId: number, type: "python" | "scratch", progress?: vscode.Progress<{ increment: number }>) {
+    const currentlyOpenTabFileUri = vscode.window.activeTextEditor?.document.uri;
     const currentlyOpenTabFilePath = vscode.window.activeTextEditor?.document.fileName;
     const config = vscode.workspace.getConfiguration();
 
-    if (currentlyOpenTabFilePath) {
+    if (currentlyOpenTabFilePath && currentlyOpenTabFileUri) {
         const currentlyOpenTabFileName = path.basename(currentlyOpenTabFilePath).replace(path.extname(currentlyOpenTabFilePath), "");
         const stats = fs.statSync(currentlyOpenTabFilePath);
+
+        const assembledFile = assembleFile(currentlyOpenTabFileUri.fsPath);
+
+        let assembledFilePath;
+        if (config.get("legoSpikePrimeMindstorms.saveFileToUpload")){
+            assembledFilePath = path.join(path.dirname(currentlyOpenTabFilePath), currentlyOpenTabFileName + ".assembled.py");
+        }
+        else{
+            assembledFilePath =path.join(os.tmpdir(), currentlyOpenTabFileName + ".assembled.py");
+        }
+
+        fs.writeFileSync(assembledFilePath, assembledFile, "utf8");
 
         let compileResult: mpy.CompileResult | undefined;
 
         if (config.get("legoSpikePrimeMindstorms.compileBeforeUpload")) {
-            compileResult = await mpy.compile(path.basename(currentlyOpenTabFilePath),
-                fs.readFileSync(currentlyOpenTabFilePath).toString("utf-8"),
+            compileResult = await mpy.compile(path.basename(assembledFilePath),
+                fs.readFileSync(assembledFilePath).toString("utf-8"),
                 ["-municode"]
             );
 
@@ -382,7 +396,7 @@ async function performUploadProgram(slotId: number, type: "python" | "scratch", 
             }
         }
         else {
-            const stream = fs.createReadStream(currentlyOpenTabFilePath, { highWaterMark: blockSize });
+            const stream = fs.createReadStream(assembledFilePath, { highWaterMark: blockSize });
             for await (const data of stream) {
                 progress?.report({ increment });
                 await rpc.sendMessage(
@@ -494,3 +508,63 @@ async function promptForSlot(isUseStorageStatusIn?: boolean, currentStep?: numbe
         input.show();
     });
 }
+
+/**
+ * The provided file should be assembled by replacing the import statements following the command "#include" with the content of the imported local python file.
+ *
+ * @param filePath The path to the file to be assembled.
+ * @returns Uint8Array containing the assembled file content.
+ */
+function assembleFile(filePath: string): Uint8Array | undefined {
+    try {
+        const fileContent = fs.readFileSync(filePath, "utf-8");
+        const assembledLines: string[] = fileContent.split("\n");
+        const includedFiles: string[] = [];
+
+        const pattern = /^from\s+([\w\d_]+)\s+import\s+\*\s/;
+
+        let startLine = 0;
+
+        for (let index = startLine; index < assembledLines.length; index++) {
+            const line = assembledLines[index];
+
+            const match = line.match(pattern);
+
+            if (!match?.[1])
+                continue;
+
+            let includePath = match[1] + ".py";
+            includePath = path.resolve(path.dirname(filePath), includePath);
+            if(!fs.existsSync(includePath)){
+                vscode.window.showWarningMessage("File: " + includePath + " not found");
+                continue;
+            }
+            assembledLines.splice(index, 1);
+            if((includedFiles.some(includedFile => includedFile === includePath)))
+                continue;
+            try {
+                startLine = index;
+
+                includedFiles.push(includePath);
+                const includedContent = fs.readFileSync(includePath, "utf-8");
+                const includedContentSplitted = includedContent.split("\n");
+                assembledLines.splice(index, 0, ...includedContentSplitted);
+                index--;
+            }
+            catch (includeError) {
+                vscode.window.showErrorMessage("Error reading included file:" + includeError);
+            }
+        }
+
+        const extendedContent = assembledLines.join("\n");
+        const extendedBuffer = Buffer.from(extendedContent, "utf-8");
+
+        return new Uint8Array(extendedBuffer);
+    }
+    catch (error) {
+        console.error("Error extending file:", error);
+        vscode.window.showErrorMessage("Error extending file: " + error);
+        return undefined;
+    }
+}
+

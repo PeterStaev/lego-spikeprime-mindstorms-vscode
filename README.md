@@ -40,6 +40,15 @@ def setup(rpc, system, stop):
 ```
 You can check what advanced functions found so far [here](ADVANCED-FEATURES.md). 
 
+### Preprocessor
+
+To support multi files before the compilation (or upload if not compiled) imported files will be inserted in the current python script.
+At the moment only 
+```python
+from file_name import *
+```
+is supported. Files not found are skipped (in the hope they exist on the hub). Nevertheless an error will inform you.
+
 ## Automatic upload/start of a python file
 
 During active development you will be uploading a program over and over again so going through all the prompts for type and slot is not very convenient. You can skip those prompts and automatically start the program after uploading by adding a specific comment line as first in your program. 
