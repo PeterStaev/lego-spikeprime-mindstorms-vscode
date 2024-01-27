@@ -1,5 +1,8 @@
 # Change Log
 
+## 1.7.1 - 2024-01-27
+* Disconnect monitoring (#47)
+
 ## 1.7.0 - 2022-04-10
 * Multifile support (#58)
 * Updated SerialPort dependencies

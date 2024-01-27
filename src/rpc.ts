@@ -8,6 +8,7 @@ import { Logger } from "./logger";
 import { getRandomString } from "./utils";
 
 export class Rpc {
+    public onClosed: vscode.EventEmitter<void> = new vscode.EventEmitter<void>();
     public get isOpenIn(): boolean {
         return this._serialPort?.isOpen;
     }
@@ -85,6 +86,9 @@ export class Rpc {
             catch (e) {
                 console.error(e);
             }
+        });
+        this._serialPort.on("close", () => {
+            this.onClosed.fire();
         });
     }
 

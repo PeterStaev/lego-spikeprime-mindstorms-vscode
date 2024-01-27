@@ -68,6 +68,7 @@ export function activate(context: vscode.ExtensionContext) {
                     },
                     () => rpc.open(),
                 );
+                rpc.onClosed.event(() => void updateHubStatusBarItem());
 
                 await updateHubStatusBarItem();
                 showTerminal();
@@ -91,8 +92,6 @@ export function activate(context: vscode.ExtensionContext) {
             },
             () => rpc.close(),
         );
-
-        await updateHubStatusBarItem();
     });
 
     const uploadProgramCommand = vscode.commands.registerCommand("lego-spikeprime-mindstorms-vscode.uploadProgram", async () => {
@@ -332,11 +331,11 @@ async function performUploadProgram(slotId: number, type: "python" | "scratch", 
         const assembledFile = assembleFile(currentlyOpenTabFileUri.fsPath);
 
         let assembledFilePath;
-        if (config.get("legoSpikePrimeMindstorms.saveFileToUpload")){
+        if (config.get("legoSpikePrimeMindstorms.saveFileToUpload")) {
             assembledFilePath = path.join(path.dirname(currentlyOpenTabFilePath), currentlyOpenTabFileName + ".assembled.py");
         }
-        else{
-            assembledFilePath =path.join(os.tmpdir(), currentlyOpenTabFileName + ".assembled.py");
+        else {
+            assembledFilePath = path.join(os.tmpdir(), currentlyOpenTabFileName + ".assembled.py");
         }
 
         fs.writeFileSync(assembledFilePath, assembledFile, "utf8");
@@ -535,12 +534,12 @@ function assembleFile(filePath: string): Uint8Array | undefined {
 
             let includePath = match[1] + ".py";
             includePath = path.resolve(path.dirname(filePath), includePath);
-            if(!fs.existsSync(includePath)){
+            if (!fs.existsSync(includePath)) {
                 vscode.window.showWarningMessage("File: " + includePath + " not found");
                 continue;
             }
             assembledLines.splice(index, 1);
-            if((includedFiles.some(includedFile => includedFile === includePath)))
+            if ((includedFiles.some(includedFile => includedFile === includePath)))
                 continue;
             try {
                 startLine = index;
