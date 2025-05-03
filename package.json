@@ -3,7 +3,7 @@
   "displayName": "LEGO SPIKE Prime / MINDSTORMS Robot Inventor Extension",
   "description": "Helps you connect Lego's SPIKE Prime/MINDSTORMS Robot Inventor",
   "publisher": "PeterStaev",
-  "version": "1.7.1",
+  "version": "2.0.0",
   "engines": {
     "vscode": "^1.66.0"
   },
@@ -117,7 +117,7 @@
   "license": "Apache-2.0",
   "scripts": {
     "vscode:prepublish": "npm run compile",
-    "compile": "npm run copy.prebuilds && webpack --mode production",
+    "compile": "webpack --mode production",
     "webpack": "webpack --mode production",
     "pretest": "npm run compile && npm run lint",
     "lint": "eslint src --ext ts",
@@ -150,6 +150,7 @@
     "webpack-cli": "^4.9.0"
   },
   "dependencies": {
+    "@abandonware/noble": "^1.9.2-26",
     "@pybricks/mpy-cross-v5": "^2.0.0",
     "@serialport/parser-readline": "^12.0.0",
     "serialport": "^12.0.0"

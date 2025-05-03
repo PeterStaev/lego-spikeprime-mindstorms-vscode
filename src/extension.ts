@@ -9,10 +9,10 @@ import { SerialPort } from "serialport";
 import { Readable } from "stream";
 import * as vscode from "vscode";
 
+import { BleClient } from "./clients/ble-client";
 import { Logger } from "./logger";
 import { Rpc } from "./rpc";
 import { getRandomString } from "./utils";
-
 declare type TypeQuickPickItem = vscode.QuickPickItem & { systemType: "python" | "scratch", type: "standard" | "advanced" };
 
 let rpc: Rpc;
@@ -41,6 +41,8 @@ const enum Command {
     DisconnectFromHub = "lego-spikeprime-mindstorms-vscode.disconnectFromHub",
 }
 
+const client = new BleClient(logger);
+
 export function activate(context: vscode.ExtensionContext) {
     hubStatusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 1);
     hubStatusBarItem.show();
@@ -48,31 +50,50 @@ export function activate(context: vscode.ExtensionContext) {
 
     const connectToHubCommand = vscode.commands.registerCommand(Command.ConnectToHub, async () => {
         try {
-            const ports = await SerialPort.list();
-            let location = context.globalState.get<string>("lastLocation");
-            const quickPickList = ports.filter((item) => item.path !== location).map((item) => ({ label: item.path }));
-            if (location) {
-                quickPickList.splice(0, 0, { label: location });
+            const selection = await vscode.window.showQuickPick(client.list(), { canPickMany: false });
+
+            if (!selection) {
+                return;
             }
-            const selection = await vscode.window.showQuickPick(quickPickList, { canPickMany: false });
 
-            if (selection) {
-                location = selection.label;
-                context.globalState.update("lastLocation", location);
+            await vscode.window.withProgress(
+                {
+                    location: vscode.ProgressLocation.Notification,
+                    title: "Connecting to Hub...",
+                },
+                () => client.connect(selection.description!),
+            );
 
-                rpc = new Rpc(location, logger);
-                await vscode.window.withProgress(
-                    {
-                        location: vscode.ProgressLocation.Notification,
-                        title: "Connecting to Hub...",
-                    },
-                    () => rpc.open(),
-                );
-                rpc.onClosed.event(() => void updateHubStatusBarItem());
+            client.onClosed.event(() => void updateHubStatusBarItem());
 
-                await updateHubStatusBarItem();
-                showTerminal();
-            }
+            await updateHubStatusBarItem();
+            showTerminal();
+
+            // const ports = await SerialPort.list();
+            // let location = context.globalState.get<string>("lastLocation");
+            // const quickPickList = ports.filter((item) => item.path !== location).map((item) => ({ label: item.path }));
+            // if (location) {
+            //     quickPickList.splice(0, 0, { label: location });
+            // }
+            // const selection = await vscode.window.showQuickPick(quickPickList, { canPickMany: false });
+
+            // if (selection) {
+            //     location = selection.label;
+            //     context.globalState.update("lastLocation", location);
+
+            //     rpc = new Rpc(location, logger);
+            //     await vscode.window.withProgress(
+            //         {
+            //             location: vscode.ProgressLocation.Notification,
+            //             title: "Connecting to Hub...",
+            //         },
+            //         () => rpc.open(),
+            //     );
+            //     rpc.onClosed.event(() => void updateHubStatusBarItem());
+
+            //     await updateHubStatusBarItem();
+            //     showTerminal();
+            // }
         }
         catch (e) {
             console.error(e);
@@ -81,7 +102,7 @@ export function activate(context: vscode.ExtensionContext) {
     });
 
     const disconnectFromHubCommand = vscode.commands.registerCommand(Command.DisconnectFromHub, async () => {
-        if (!rpc?.isOpenIn) {
+        if (!client.isConnectedIn) {
             return;
         }
 
@@ -90,223 +111,223 @@ export function activate(context: vscode.ExtensionContext) {
                 location: vscode.ProgressLocation.Notification,
                 title: "Disconnecting from Hub...",
             },
-            () => rpc.close(),
+            () => client.disconnect(),
         );
     });
 
-    const uploadProgramCommand = vscode.commands.registerCommand("lego-spikeprime-mindstorms-vscode.uploadProgram", async () => {
-        if (!rpc?.isOpenIn) {
-            vscode.window.showErrorMessage("LEGO Hub not connected! Please connect first!");
-            return;
-        }
+    // const uploadProgramCommand = vscode.commands.registerCommand("lego-spikeprime-mindstorms-vscode.uploadProgram", async () => {
+    //     if (!rpc?.isOpenIn) {
+    //         vscode.window.showErrorMessage("LEGO Hub not connected! Please connect first!");
+    //         return;
+    //     }
 
-        const editor = vscode.window.activeTextEditor;
+    //     const editor = vscode.window.activeTextEditor;
 
-        if (!editor) {
-            vscode.window.showErrorMessage("Please open a file");
-            return;
-        }
+    //     if (!editor) {
+    //         vscode.window.showErrorMessage("Please open a file");
+    //         return;
+    //     }
 
-        try {
-            await vscode.commands.executeCommand("workbench.action.files.save");
+    //     try {
+    //         await vscode.commands.executeCommand("workbench.action.files.save");
 
-            const header = editor?.document.lineAt(0).text;
-            let slotId: number = NaN;
-            let typeSelection: TypeQuickPickItem | undefined;
-            let isAutostartIn: boolean = false;
+    //         const header = editor?.document.lineAt(0).text;
+    //         let slotId: number = NaN;
+    //         let typeSelection: TypeQuickPickItem | undefined;
+    //         let isAutostartIn: boolean = false;
 
-            // Header sample:
-            // # LEGO type:advanced slot:3
-            if (header?.startsWith("# LEGO")) {
-                const split = header.split(/[:\s]/gi);
-                for (let loop = 0; loop < split.length; loop++) {
-                    const element = split[loop];
+    //         // Header sample:
+    //         // # LEGO type:advanced slot:3
+    //         if (header?.startsWith("# LEGO")) {
+    //             const split = header.split(/[:\s]/gi);
+    //             for (let loop = 0; loop < split.length; loop++) {
+    //                 const element = split[loop];
 
-                    if (element === "type") {
-                        typeSelection = programTypes.find((item) => item.type === split[loop + 1]);
-                    }
+    //                 if (element === "type") {
+    //                     typeSelection = programTypes.find((item) => item.type === split[loop + 1]);
+    //                 }
 
-                    if (element === "slot") {
-                        slotId = +split[loop + 1];
-                    }
+    //                 if (element === "slot") {
+    //                     slotId = +split[loop + 1];
+    //                 }
 
-                    if (element === "autostart") {
-                        isAutostartIn = true;
-                    }
-                }
-            }
+    //                 if (element === "autostart") {
+    //                     isAutostartIn = true;
+    //                 }
+    //             }
+    //         }
 
-            // Prompt for type
-            if (!typeSelection) {
-                typeSelection = await promptForProgramType();
-                if (!typeSelection) {
-                    return;
-                }
-            }
+    //         // Prompt for type
+    //         if (!typeSelection) {
+    //             typeSelection = await promptForProgramType();
+    //             if (!typeSelection) {
+    //                 return;
+    //             }
+    //         }
 
-            // Prompt for slot
-            if (isNaN(slotId)
-                || slotId < 0
-                || slotId > 19) {
-                slotId = await promptForSlot(true);
-                if (isNaN(slotId)) {
-                    return;
-                }
-            }
+    //         // Prompt for slot
+    //         if (isNaN(slotId)
+    //             || slotId < 0
+    //             || slotId > 19) {
+    //             slotId = await promptForSlot(true);
+    //             if (isNaN(slotId)) {
+    //                 return;
+    //             }
+    //         }
 
-            await vscode.window.withProgress(
-                {
-                    location: vscode.ProgressLocation.Notification,
-                    title: `Uploading Program to Hub (Slot #${slotId})...`,
-                },
-                (progress) => performUploadProgram(+slotId, typeSelection!.systemType, progress),
-            );
+    //         await vscode.window.withProgress(
+    //             {
+    //                 location: vscode.ProgressLocation.Notification,
+    //                 title: `Uploading Program to Hub (Slot #${slotId})...`,
+    //             },
+    //             (progress) => performUploadProgram(+slotId, typeSelection!.systemType, progress),
+    //         );
 
-            vscode.window.showInformationMessage("Program uploaded!");
+    //         vscode.window.showInformationMessage("Program uploaded!");
 
-            if (isAutostartIn) {
-                void rpc.sendMessage("program_execute", { slotid: slotId });
-            }
-        }
-        catch (e) {
-            console.error(e);
-            vscode.window.showErrorMessage("Program Upload Failed!" + (e instanceof Error ? ` ${e.message}` : ""));
-        }
-    });
+    //         if (isAutostartIn) {
+    //             void rpc.sendMessage("program_execute", { slotid: slotId });
+    //         }
+    //     }
+    //     catch (e) {
+    //         console.error(e);
+    //         vscode.window.showErrorMessage("Program Upload Failed!" + (e instanceof Error ? ` ${e.message}` : ""));
+    //     }
+    // });
 
-    const startProgramCommand = vscode.commands.registerCommand("lego-spikeprime-mindstorms-vscode.startProgram", async () => {
-        if (!rpc?.isOpenIn) {
-            vscode.window.showErrorMessage("LEGO Hub not connected! Please connect first!");
-            return;
-        }
+    // const startProgramCommand = vscode.commands.registerCommand("lego-spikeprime-mindstorms-vscode.startProgram", async () => {
+    //     if (!rpc?.isOpenIn) {
+    //         vscode.window.showErrorMessage("LEGO Hub not connected! Please connect first!");
+    //         return;
+    //     }
 
-        try {
-            const storageStatus = await rpc.sendMessage("get_storage_status");
-            const slots = storageStatus.slots;
-            const quickPickSlots: vscode.QuickPickItem[] = [];
-            for (let index = 0; index < 20; index++) {
-                quickPickSlots.push({
-                    label: index.toString(),
-                    description: slots[index] ? Buffer.from(slots[index].name, "base64").toString("utf-8") : "",
-                });
-            }
+    //     try {
+    //         const storageStatus = await rpc.sendMessage("get_storage_status");
+    //         const slots = storageStatus.slots;
+    //         const quickPickSlots: vscode.QuickPickItem[] = [];
+    //         for (let index = 0; index < 20; index++) {
+    //             quickPickSlots.push({
+    //                 label: index.toString(),
+    //                 description: slots[index] ? Buffer.from(slots[index].name, "base64").toString("utf-8") : "",
+    //             });
+    //         }
 
-            const slotSelection = await vscode.window.showQuickPick(quickPickSlots);
+    //         const slotSelection = await vscode.window.showQuickPick(quickPickSlots);
 
-            if (!slotSelection) {
-                return;
-            }
+    //         if (!slotSelection) {
+    //             return;
+    //         }
 
-            const slotId = +slotSelection.label;
-            await vscode.window.withProgress(
-                {
-                    location: vscode.ProgressLocation.Notification,
-                    title: `Starting Program in Slot #${slotId}...`,
-                },
-                () => rpc.sendMessage("program_execute", { slotid: slotId }),
-            );
-        }
-        catch (e) {
-            console.error(e);
-            vscode.window.showErrorMessage("Starting Program Failed!" + (e instanceof Error ? ` ${e.message}` : ""));
-        }
-    });
+    //         const slotId = +slotSelection.label;
+    //         await vscode.window.withProgress(
+    //             {
+    //                 location: vscode.ProgressLocation.Notification,
+    //                 title: `Starting Program in Slot #${slotId}...`,
+    //             },
+    //             () => rpc.sendMessage("program_execute", { slotid: slotId }),
+    //         );
+    //     }
+    //     catch (e) {
+    //         console.error(e);
+    //         vscode.window.showErrorMessage("Starting Program Failed!" + (e instanceof Error ? ` ${e.message}` : ""));
+    //     }
+    // });
 
-    const terminateProgramCommand = vscode.commands.registerCommand("lego-spikeprime-mindstorms-vscode.terminateProgram", async () => {
-        if (!rpc?.isOpenIn) {
-            vscode.window.showErrorMessage("LEGO Hub not connected! Please connect first!");
-            return;
-        }
+    // const terminateProgramCommand = vscode.commands.registerCommand("lego-spikeprime-mindstorms-vscode.terminateProgram", async () => {
+    //     if (!rpc?.isOpenIn) {
+    //         vscode.window.showErrorMessage("LEGO Hub not connected! Please connect first!");
+    //         return;
+    //     }
 
-        try {
-            await vscode.window.withProgress(
-                {
-                    location: vscode.ProgressLocation.Notification,
-                    title: "Terminating Running Program...",
-                },
-                () => rpc.sendMessage("program_terminate"),
-            );
-        }
-        catch (e) {
-            console.error(e);
-            vscode.window.showErrorMessage("Terminating Program Failed!" + (e instanceof Error ? ` ${e.message}` : ""));
-        }
-    });
+    //     try {
+    //         await vscode.window.withProgress(
+    //             {
+    //                 location: vscode.ProgressLocation.Notification,
+    //                 title: "Terminating Running Program...",
+    //             },
+    //             () => rpc.sendMessage("program_terminate"),
+    //         );
+    //     }
+    //     catch (e) {
+    //         console.error(e);
+    //         vscode.window.showErrorMessage("Terminating Program Failed!" + (e instanceof Error ? ` ${e.message}` : ""));
+    //     }
+    // });
 
     const showTerminalCommand = vscode.commands.registerCommand("lego-spikeprime-mindstorms-vscode.showTerminal", showTerminal);
 
-    const addFileHeaderCommand = vscode.commands.registerCommand("lego-spikeprime-mindstorms-vscode.addFileHeader", async () => {
-        try {
-            const editor = vscode.window.activeTextEditor;
+    // const addFileHeaderCommand = vscode.commands.registerCommand("lego-spikeprime-mindstorms-vscode.addFileHeader", async () => {
+    //     try {
+    //         const editor = vscode.window.activeTextEditor;
 
-            if (!editor) {
-                vscode.window.showErrorMessage("Please open a file");
-                return;
-            }
+    //         if (!editor) {
+    //             vscode.window.showErrorMessage("Please open a file");
+    //             return;
+    //         }
 
-            // Prompt for type
-            const typeSelection = await promptForProgramType(1, 3);
-            if (!typeSelection) {
-                return;
-            }
+    //         // Prompt for type
+    //         const typeSelection = await promptForProgramType(1, 3);
+    //         if (!typeSelection) {
+    //             return;
+    //         }
 
-            // Prompt for slot
-            const slotId = await promptForSlot(false, 2, 3);
-            if (isNaN(slotId)) {
-                return;
-            }
+    //         // Prompt for slot
+    //         const slotId = await promptForSlot(false, 2, 3);
+    //         if (isNaN(slotId)) {
+    //             return;
+    //         }
 
-            // Prompt for auto start
-            const isAutostart = await new Promise<boolean | undefined>(resolve => {
-                const input = vscode.window.createQuickPick();
+    //         // Prompt for auto start
+    //         const isAutostart = await new Promise<boolean | undefined>(resolve => {
+    //             const input = vscode.window.createQuickPick();
 
-                input.title = "Autostart";
-                input.step = 3;
-                input.totalSteps = 3;
-                input.placeholder = "Should the program start automatically when uploaded?";
-                input.items = [
-                    { label: "yes" },
-                    { label: "no" },
-                ];
+    //             input.title = "Autostart";
+    //             input.step = 3;
+    //             input.totalSteps = 3;
+    //             input.placeholder = "Should the program start automatically when uploaded?";
+    //             input.items = [
+    //                 { label: "yes" },
+    //                 { label: "no" },
+    //             ];
 
-                input.onDidAccept(() => {
-                    const selectedItem = input.selectedItems[0];
-                    resolve(selectedItem.label === "yes");
-                    input.hide();
-                });
-                input.onDidHide(() => {
-                    input.dispose();
-                    resolve(undefined);
-                });
+    //             input.onDidAccept(() => {
+    //                 const selectedItem = input.selectedItems[0];
+    //                 resolve(selectedItem.label === "yes");
+    //                 input.hide();
+    //             });
+    //             input.onDidHide(() => {
+    //                 input.dispose();
+    //                 resolve(undefined);
+    //             });
 
-                input.show();
-            });
+    //             input.show();
+    //         });
 
-            if (isAutostart === undefined) {
-                return;
-            }
+    //         if (isAutostart === undefined) {
+    //             return;
+    //         }
 
-            editor.edit((editBuilder) => {
-                editBuilder.insert(
-                    new vscode.Position(0, 0),
-                    `# LEGO type:${typeSelection?.type} slot:${slotId}${(isAutostart ? " autostart" : "")}\n\n`,
-                );
-            });
-        }
-        catch (e) {
-            console.error(e);
-            vscode.window.showErrorMessage("Adding File Header Failed!" + (e instanceof Error ? ` ${e.message}` : ""));
-        }
-    });
+    //         editor.edit((editBuilder) => {
+    //             editBuilder.insert(
+    //                 new vscode.Position(0, 0),
+    //                 `# LEGO type:${typeSelection?.type} slot:${slotId}${(isAutostart ? " autostart" : "")}\n\n`,
+    //             );
+    //         });
+    //     }
+    //     catch (e) {
+    //         console.error(e);
+    //         vscode.window.showErrorMessage("Adding File Header Failed!" + (e instanceof Error ? ` ${e.message}` : ""));
+    //     }
+    // });
 
     context.subscriptions.push(
         connectToHubCommand,
         disconnectFromHubCommand,
-        uploadProgramCommand,
-        startProgramCommand,
-        terminateProgramCommand,
+        // uploadProgramCommand,
+        // startProgramCommand,
+        // terminateProgramCommand,
         showTerminalCommand,
-        addFileHeaderCommand,
+        // addFileHeaderCommand,
 
         hubStatusBarItem,
     );
@@ -431,11 +452,8 @@ function showTerminal() {
 }
 
 async function updateHubStatusBarItem() {
-    if (rpc?.isOpenIn) {
-        const hubInfo = await rpc.sendMessage("get_hub_info");
-        const { firmware, runtime } = hubInfo;
-
-        hubStatusBarItem.text = `$(repl) LEGO Hub: Connected (${firmware.version.join(".")} / ${runtime.version.join(".")})`;
+    if (client.isConnectedIn) {
+        hubStatusBarItem.text = `$(repl) LEGO Hub: Connected (${client.firmwareVersion} / ${client.rpcVersion})`;
         hubStatusBarItem.command = Command.DisconnectFromHub;
     }
     else {

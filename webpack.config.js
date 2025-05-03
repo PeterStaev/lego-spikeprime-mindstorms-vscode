@@ -23,6 +23,9 @@ const config = {
             vscode: "commonjs vscode", // the vscode-module is created on-the-fly and must be excluded. Add other modules that cannot be webpack'ed, 📖 -> https://webpack.js.org/configuration/externals/
         },
         "@pybricks/mpy-cross-v5",
+        "@abandonware/bluetooth-hci-socket",
+        "ws",
+        "./hci-status",
     ],
     resolve: {
         // support reading TypeScript and JavaScript files, 📖 -> https://github.com/TypeStrong/ts-loader

@@ -12,3 +12,12 @@ export function getRandomString(length: number) {
 
     return result.join("");
 }
+
+export function setTimeoutAsync(callback: () => void, delay: number) {
+    return new Promise<void>((resolve) => {
+        setTimeout(() => {
+            callback();
+            resolve();
+        }, delay);
+    });
+}
