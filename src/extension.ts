@@ -48,6 +48,8 @@ export function activate(context: vscode.ExtensionContext) {
     hubStatusBarItem.show();
     updateHubStatusBarItem();
 
+    client.onClosed.event(() => void updateHubStatusBarItem());
+
     const connectToHubCommand = vscode.commands.registerCommand(Command.ConnectToHub, async () => {
         try {
             const selection = await vscode.window.showQuickPick(client.list(), { canPickMany: false });
@@ -64,36 +66,8 @@ export function activate(context: vscode.ExtensionContext) {
                 () => client.connect(selection.description!),
             );
 
-            client.onClosed.event(() => void updateHubStatusBarItem());
-
             await updateHubStatusBarItem();
             showTerminal();
-
-            // const ports = await SerialPort.list();
-            // let location = context.globalState.get<string>("lastLocation");
-            // const quickPickList = ports.filter((item) => item.path !== location).map((item) => ({ label: item.path }));
-            // if (location) {
-            //     quickPickList.splice(0, 0, { label: location });
-            // }
-            // const selection = await vscode.window.showQuickPick(quickPickList, { canPickMany: false });
-
-            // if (selection) {
-            //     location = selection.label;
-            //     context.globalState.update("lastLocation", location);
-
-            //     rpc = new Rpc(location, logger);
-            //     await vscode.window.withProgress(
-            //         {
-            //             location: vscode.ProgressLocation.Notification,
-            //             title: "Connecting to Hub...",
-            //         },
-            //         () => rpc.open(),
-            //     );
-            //     rpc.onClosed.event(() => void updateHubStatusBarItem());
-
-            //     await updateHubStatusBarItem();
-            //     showTerminal();
-            // }
         }
         catch (e) {
             console.error(e);
@@ -195,43 +169,36 @@ export function activate(context: vscode.ExtensionContext) {
     //     }
     // });
 
-    // const startProgramCommand = vscode.commands.registerCommand("lego-spikeprime-mindstorms-vscode.startProgram", async () => {
-    //     if (!rpc?.isOpenIn) {
-    //         vscode.window.showErrorMessage("LEGO Hub not connected! Please connect first!");
-    //         return;
-    //     }
+    const startProgramCommand = vscode.commands.registerCommand("lego-spikeprime-mindstorms-vscode.startProgram", async () => {
+        if (!client.isConnectedIn) {
+            vscode.window.showErrorMessage("LEGO Hub not connected! Please connect first!");
+            return;
+        }
 
-    //     try {
-    //         const storageStatus = await rpc.sendMessage("get_storage_status");
-    //         const slots = storageStatus.slots;
-    //         const quickPickSlots: vscode.QuickPickItem[] = [];
-    //         for (let index = 0; index < 20; index++) {
-    //             quickPickSlots.push({
-    //                 label: index.toString(),
-    //                 description: slots[index] ? Buffer.from(slots[index].name, "base64").toString("utf-8") : "",
-    //             });
-    //         }
+        try {
+            const slotId = await promptForSlot();
+            if (isNaN(slotId)) {
+                return;
+            }
 
-    //         const slotSelection = await vscode.window.showQuickPick(quickPickSlots);
+            const success = await vscode.window.withProgress(
+                {
+                    location: vscode.ProgressLocation.Notification,
+                    title: `Starting Program in Slot #${slotId}...`,
+                },
+                () => client.startStopProgram(slotId),
+            );
 
-    //         if (!slotSelection) {
-    //             return;
-    //         }
-
-    //         const slotId = +slotSelection.label;
-    //         await vscode.window.withProgress(
-    //             {
-    //                 location: vscode.ProgressLocation.Notification,
-    //                 title: `Starting Program in Slot #${slotId}...`,
-    //             },
-    //             () => rpc.sendMessage("program_execute", { slotid: slotId }),
-    //         );
-    //     }
-    //     catch (e) {
-    //         console.error(e);
-    //         vscode.window.showErrorMessage("Starting Program Failed!" + (e instanceof Error ? ` ${e.message}` : ""));
-    //     }
-    // });
+            if (!success) {
+                vscode.window.showErrorMessage("Starting program not acknowledged from hub!");
+                return;
+            }
+        }
+        catch (e) {
+            console.error(e);
+            vscode.window.showErrorMessage("Starting Program Failed!" + (e instanceof Error ? ` ${e.message}` : ""));
+        }
+    });
 
     // const terminateProgramCommand = vscode.commands.registerCommand("lego-spikeprime-mindstorms-vscode.terminateProgram", async () => {
     //     if (!rpc?.isOpenIn) {
@@ -324,7 +291,7 @@ export function activate(context: vscode.ExtensionContext) {
         connectToHubCommand,
         disconnectFromHubCommand,
         // uploadProgramCommand,
-        // startProgramCommand,
+        startProgramCommand,
         // terminateProgramCommand,
         showTerminalCommand,
         // addFileHeaderCommand,
@@ -487,20 +454,12 @@ async function promptForProgramType(currentStep?: number, totalSteps?: number): 
     });
 }
 
-async function promptForSlot(isUseStorageStatusIn?: boolean, currentStep?: number, totalSteps?: number): Promise<number> {
-    let slots: any[] | undefined;
-
-    if (isUseStorageStatusIn && rpc?.isOpenIn) {
-        const storageStatus = await rpc.sendMessage("get_storage_status");
-        slots = storageStatus.slots;
-    }
-
+async function promptForSlot(currentStep?: number, totalSteps?: number): Promise<number> {
     return new Promise<number>((resolve, reject) => {
         const quickPickSlots: vscode.QuickPickItem[] = [];
         for (let index = 0; index < 20; index++) {
             quickPickSlots.push({
                 label: index.toString(),
-                description: slots && slots[index] ? Buffer.from(slots[index].name, "base64").toString("utf-8") : "",
             });
         }
 

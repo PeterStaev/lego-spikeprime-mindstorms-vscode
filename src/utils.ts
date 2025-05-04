@@ -2,6 +2,7 @@ import * as crypto from "crypto";
 
 const randomStringChars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-".split("");
 
+// TODO: Possibly remove this as it won't be used?
 export function getRandomString(length: number) {
     const randomBytes = crypto.randomBytes(length);
     const result: string[] = [];

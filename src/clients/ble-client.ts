@@ -6,8 +6,12 @@ import * as vscode from "vscode";
 import { pack, unpack } from "../cobs";
 import { Logger } from "../logger";
 import { BaseMessage } from "../messages/base-message";
+import { ConsoleNotificationMessage } from "../messages/console-notification-message";
 import { InfoRequestMessage } from "../messages/info-request-message";
 import { InfoResponseMessage } from "../messages/info-response-message";
+import { ProgramFlowNotificationMessage } from "../messages/program-flow-notification-message";
+import { ProgramFlowRequestMessage } from "../messages/program-flow-request-message";
+import { ProgramFlowResponseMessage } from "../messages/program-flow-response-message";
 import { setTimeoutAsync } from "../utils";
 
 const SERVICE_UUID = "0000FD02-0000-1000-8000-00805F9B34FB";
@@ -127,6 +131,11 @@ export class BleClient {
         }
     }
 
+    public async startStopProgram(slot: number, isStopIn = false) {
+        const response = await this.sendMessage<ProgramFlowRequestMessage, ProgramFlowResponseMessage>(new ProgramFlowRequestMessage(slot, isStopIn), ProgramFlowResponseMessage);
+        return response.IsAckIn;
+    }
+
     private async sendMessage<T extends BaseMessage, U extends BaseMessage>(message: T, result: typeof BaseMessage): Promise<U> {
         const payload = pack(message.serialize());
         const resultPromise = new Promise<BaseMessage>((resolve, reject) => {
@@ -152,8 +161,8 @@ export class BleClient {
                 resolve(resultMessage);
                 this._pendingMessagesPromises.delete(messageId);
             }
-            else {
-                // TODO: handle unknown message
+            else if (resultMessage instanceof ConsoleNotificationMessage) {
+                this._logger.log(resultMessage.message ?? "");
             }
         }
         catch (e) {
@@ -182,6 +191,18 @@ function deserializeMessage(data: Uint8Array): [id: number, message: BaseMessage
     switch (messageId) {
         case InfoResponseMessage.Id:
             message = new InfoResponseMessage();
+            break;
+
+        case ProgramFlowNotificationMessage.Id:
+            message = new ProgramFlowNotificationMessage();
+            break;
+
+        case ProgramFlowResponseMessage.Id:
+            message = new ProgramFlowResponseMessage();
+            break;
+
+        case ConsoleNotificationMessage.Id:
+            message = new ConsoleNotificationMessage();
             break;
 
         default:
