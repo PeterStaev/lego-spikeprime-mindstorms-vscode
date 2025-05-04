@@ -21,6 +21,7 @@ const writeEmitter = new vscode.EventEmitter<string>();
 const logger = new Logger(writeEmitter);
 let terminal: vscode.Terminal | null;
 let hubStatusBarItem: vscode.StatusBarItem;
+let currentStartedProgramSlotId: number | undefined;
 const programTypes: TypeQuickPickItem[] = [
     {
         label: "Python (standard)",
@@ -48,7 +49,10 @@ export function activate(context: vscode.ExtensionContext) {
     hubStatusBarItem.show();
     updateHubStatusBarItem();
 
-    client.onClosed.event(() => void updateHubStatusBarItem());
+    client.onClosed.event(() => {
+        void updateHubStatusBarItem();
+        currentStartedProgramSlotId = undefined;
+    });
 
     const connectToHubCommand = vscode.commands.registerCommand(Command.ConnectToHub, async () => {
         try {
@@ -193,6 +197,8 @@ export function activate(context: vscode.ExtensionContext) {
                 vscode.window.showErrorMessage("Starting program not acknowledged from hub!");
                 return;
             }
+
+            currentStartedProgramSlotId = slotId;
         }
         catch (e) {
             console.error(e);
@@ -200,26 +206,38 @@ export function activate(context: vscode.ExtensionContext) {
         }
     });
 
-    // const terminateProgramCommand = vscode.commands.registerCommand("lego-spikeprime-mindstorms-vscode.terminateProgram", async () => {
-    //     if (!rpc?.isOpenIn) {
-    //         vscode.window.showErrorMessage("LEGO Hub not connected! Please connect first!");
-    //         return;
-    //     }
+    const terminateProgramCommand = vscode.commands.registerCommand("lego-spikeprime-mindstorms-vscode.terminateProgram", async () => {
+        if (!client.isConnectedIn) {
+            vscode.window.showErrorMessage("LEGO Hub not connected! Please connect first!");
+            return;
+        }
 
-    //     try {
-    //         await vscode.window.withProgress(
-    //             {
-    //                 location: vscode.ProgressLocation.Notification,
-    //                 title: "Terminating Running Program...",
-    //             },
-    //             () => rpc.sendMessage("program_terminate"),
-    //         );
-    //     }
-    //     catch (e) {
-    //         console.error(e);
-    //         vscode.window.showErrorMessage("Terminating Program Failed!" + (e instanceof Error ? ` ${e.message}` : ""));
-    //     }
-    // });
+        if (currentStartedProgramSlotId === undefined) {
+            vscode.window.showErrorMessage("No program started! Please start a program first!");
+            return;
+        }
+
+        try {
+            const succeess = await vscode.window.withProgress(
+                {
+                    location: vscode.ProgressLocation.Notification,
+                    title: "Terminating Running Program...",
+                },
+                () => client.startStopProgram(currentStartedProgramSlotId!, true),
+            );
+
+            if (!succeess) {
+                vscode.window.showErrorMessage("Terminating program not acknowledged from hub!");
+                return;
+            }
+
+            currentStartedProgramSlotId = undefined;
+        }
+        catch (e) {
+            console.error(e);
+            vscode.window.showErrorMessage("Terminating Program Failed!" + (e instanceof Error ? ` ${e.message}` : ""));
+        }
+    });
 
     const showTerminalCommand = vscode.commands.registerCommand("lego-spikeprime-mindstorms-vscode.showTerminal", showTerminal);
 
@@ -292,7 +310,7 @@ export function activate(context: vscode.ExtensionContext) {
         disconnectFromHubCommand,
         // uploadProgramCommand,
         startProgramCommand,
-        // terminateProgramCommand,
+        terminateProgramCommand,
         showTerminalCommand,
         // addFileHeaderCommand,
 
