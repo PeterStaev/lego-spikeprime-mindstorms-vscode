@@ -2,6 +2,7 @@
 // Import the module and reference it with the alias vscode in your code below
 import * as mpy from "@pybricks/mpy-cross-v5";
 
+import { on } from "events";
 import * as fs from "fs";
 import * as os from "os";
 import * as path from "path";
@@ -22,6 +23,7 @@ const logger = new Logger(writeEmitter);
 let terminal: vscode.Terminal | null;
 let hubStatusBarItem: vscode.StatusBarItem;
 let currentStartedProgramSlotId: number | undefined;
+let currentStartedProgramResolve: (() => void) | undefined;
 const programTypes: TypeQuickPickItem[] = [
     {
         label: "Python (standard)",
@@ -52,6 +54,31 @@ export function activate(context: vscode.ExtensionContext) {
     client.onClosed.event(() => {
         void updateHubStatusBarItem();
         currentStartedProgramSlotId = undefined;
+        currentStartedProgramResolve = undefined;
+    });
+
+    client.onProgramRunningChanged.event((isRunningIn) => {
+        if (isRunningIn && currentStartedProgramSlotId !== undefined) {
+            void vscode.window.withProgress(
+                {
+                    location: vscode.ProgressLocation.Notification,
+                    title: `Running Program #${currentStartedProgramSlotId}...`,
+                    cancellable: true,
+                },
+                (progress, token) => new Promise<void>((resolve, reject) => {
+                    currentStartedProgramResolve = resolve;
+                    token.onCancellationRequested(() => {
+                        void terminateCurrentProgram();
+                        resolve();
+                    });
+                }),
+            );
+        }
+
+        if (!isRunningIn && currentStartedProgramResolve) {
+            currentStartedProgramResolve();
+            currentStartedProgramResolve = undefined;
+        }
     });
 
     const connectToHubCommand = vscode.commands.registerCommand(Command.ConnectToHub, async () => {
@@ -206,38 +233,7 @@ export function activate(context: vscode.ExtensionContext) {
         }
     });
 
-    const terminateProgramCommand = vscode.commands.registerCommand("lego-spikeprime-mindstorms-vscode.terminateProgram", async () => {
-        if (!client.isConnectedIn) {
-            vscode.window.showErrorMessage("LEGO Hub not connected! Please connect first!");
-            return;
-        }
-
-        if (currentStartedProgramSlotId === undefined) {
-            vscode.window.showErrorMessage("No program started! Please start a program first!");
-            return;
-        }
-
-        try {
-            const succeess = await vscode.window.withProgress(
-                {
-                    location: vscode.ProgressLocation.Notification,
-                    title: "Terminating Running Program...",
-                },
-                () => client.startStopProgram(currentStartedProgramSlotId!, true),
-            );
-
-            if (!succeess) {
-                vscode.window.showErrorMessage("Terminating program not acknowledged from hub!");
-                return;
-            }
-
-            currentStartedProgramSlotId = undefined;
-        }
-        catch (e) {
-            console.error(e);
-            vscode.window.showErrorMessage("Terminating Program Failed!" + (e instanceof Error ? ` ${e.message}` : ""));
-        }
-    });
+    const terminateProgramCommand = vscode.commands.registerCommand("lego-spikeprime-mindstorms-vscode.terminateProgram", terminateCurrentProgram);
 
     const showTerminalCommand = vscode.commands.registerCommand("lego-spikeprime-mindstorms-vscode.showTerminal", showTerminal);
 
@@ -319,9 +315,9 @@ export function activate(context: vscode.ExtensionContext) {
 }
 
 // this method is called when your extension is deactivated
-export function deactivate() {
-    if (rpc?.isOpenIn) {
-        rpc.close();
+export async function deactivate() {
+    if (client.isConnectedIn) {
+        await client.disconnect();
     }
 }
 
@@ -503,6 +499,38 @@ async function promptForSlot(currentStep?: number, totalSteps?: number): Promise
     });
 }
 
+async function terminateCurrentProgram() {
+    if (!client.isConnectedIn) {
+        vscode.window.showErrorMessage("LEGO Hub not connected! Please connect first!");
+        return;
+    }
+
+    if (currentStartedProgramSlotId === undefined) {
+        vscode.window.showErrorMessage("No program started! Please start a program first!");
+        return;
+    }
+
+    try {
+        const succeess = await vscode.window.withProgress(
+            {
+                location: vscode.ProgressLocation.Notification,
+                title: "Terminating Running Program...",
+            },
+            () => client.startStopProgram(currentStartedProgramSlotId!, true),
+        );
+
+        if (!succeess) {
+            vscode.window.showErrorMessage("Terminating program not acknowledged from hub!");
+            return;
+        }
+
+        currentStartedProgramSlotId = undefined;
+    }
+    catch (e) {
+        console.error(e);
+        vscode.window.showErrorMessage("Terminating Program Failed!" + (e instanceof Error ? ` ${e.message}` : ""));
+    }
+}
 /**
  * The provided file should be assembled by replacing the import statements following the command "#include" with the content of the imported local python file.
  *

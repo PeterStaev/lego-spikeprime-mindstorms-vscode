@@ -23,6 +23,7 @@ const TIMEOUT_SECONDS = 5; // TODO: make this configurable
 
 export class BleClient {
     public onClosed: vscode.EventEmitter<void> = new vscode.EventEmitter<void>();
+    public onProgramRunningChanged: vscode.EventEmitter<boolean> = new vscode.EventEmitter<boolean>();
     public get isConnectedIn(): boolean {
         return !!this._peripheral;
     }
@@ -160,6 +161,9 @@ export class BleClient {
                 const [resolve] = pendingMessage;
                 resolve(resultMessage);
                 this._pendingMessagesPromises.delete(messageId);
+            }
+            else if (resultMessage instanceof ProgramFlowNotificationMessage) {
+                this.onProgramRunningChanged.fire(!resultMessage.isStopIn!);
             }
             else if (resultMessage instanceof ConsoleNotificationMessage) {
                 this._logger.log(resultMessage.message ?? "");
