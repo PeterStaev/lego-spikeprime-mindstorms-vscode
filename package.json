@@ -117,12 +117,13 @@
   "license": "Apache-2.0",
   "scripts": {
     "vscode:prepublish": "npm run compile",
-    "compile": "webpack --mode production",
+    "compile": "npm run copy.wasm && webpack --mode development",
     "webpack": "webpack --mode production",
     "pretest": "npm run compile && npm run lint",
     "lint": "eslint src --ext ts",
     "test": "node ./out/test/runTest.js",
     "copy.prebuilds": "ncp ./node_modules/@serialport/bindings-cpp/prebuilds/ ./prebuilds/",
+    "copy.wasm": "ncp ./node_modules/@pybricks/mpy-cross-v6/build/mpy-cross-v6.wasm ./dist/mpy-cross-v6.wasm",
     "update-eslint": "npx npm-check-updates --upgrade --filter \"/.*eslint.*/\"",
     "update-serialport": "npx npm-check-updates --upgrade --filter \"/.*serialport.*/\"",
     "test-compile": "tsc -p ./"
@@ -146,13 +147,14 @@
     "ts-loader": "^9.2.5",
     "typescript": "^4.6.3",
     "vscode-test": "^1.5.0",
-    "webpack": "^5.99.7",
+    "webpack": "^5.72.0",
     "webpack-cli": "^4.10.0"
   },
   "dependencies": {
     "@abandonware/noble": "^1.9.2-26",
-    "@pybricks/mpy-cross-v5": "^2.0.0",
+    "@pybricks/mpy-cross-v6": "^2.0.0",
     "@serialport/parser-readline": "^12.0.0",
+    "crc-32": "^1.2.2",
     "serialport": "^12.0.0"
   }
 }

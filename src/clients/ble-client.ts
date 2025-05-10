@@ -12,6 +12,10 @@ import { InfoResponseMessage } from "../messages/info-response-message";
 import { ProgramFlowNotificationMessage } from "../messages/program-flow-notification-message";
 import { ProgramFlowRequestMessage } from "../messages/program-flow-request-message";
 import { ProgramFlowResponseMessage } from "../messages/program-flow-response-message";
+import { StartFileUploadRequestMessage } from "../messages/start-file-upload-request-message";
+import { StartFileUploadResponseMessage } from "../messages/start-file-upload-response-message";
+import { TransferChunkRequestMessage } from "../messages/transfer-chunk-request-message";
+import { TransferChunkResponseMessage } from "../messages/transfer-chunk-response-message";
 import { setTimeoutAsync } from "../utils";
 
 const SERVICE_UUID = "0000FD02-0000-1000-8000-00805F9B34FB";
@@ -40,6 +44,12 @@ export class BleClient {
         }
 
         return `${this._infoResponse.rpcMajor}.${this._infoResponse.rpcMinor}.${this._infoResponse.rpcBuild}`;
+    }
+    public get maxChunkSize() {
+        if (!this._infoResponse) {
+            return undefined;
+        }
+        return this._infoResponse.maxChunkSize;
     }
 
     private _logger: Logger;
@@ -137,6 +147,28 @@ export class BleClient {
         return response.IsAckIn;
     }
 
+    public async startFileUpload(fileName: string, slot: number, crc: number) {
+        const uploadResponse = await this.sendMessage<StartFileUploadRequestMessage, StartFileUploadResponseMessage>(
+            new StartFileUploadRequestMessage(fileName, slot, crc),
+            StartFileUploadResponseMessage,
+        );
+
+        if (!uploadResponse.IsAckIn) {
+            throw new Error("Failed to start file upload");
+        }
+    }
+
+    public async transferChunk(chunk: Uint8Array, runningCrc: number) {
+        const response = await this.sendMessage<TransferChunkRequestMessage, TransferChunkResponseMessage>(
+            new TransferChunkRequestMessage(runningCrc, chunk),
+            TransferChunkResponseMessage,
+        );
+
+        if (!response.IsAckIn) {
+            throw new Error("Failed to transfer chunk");
+        }
+    }
+
     private async sendMessage<T extends BaseMessage, U extends BaseMessage>(message: T, result: typeof BaseMessage): Promise<U> {
         const payload = pack(message.serialize());
         const resultPromise = new Promise<BaseMessage>((resolve, reject) => {
@@ -207,6 +239,14 @@ function deserializeMessage(data: Uint8Array): [id: number, message: BaseMessage
 
         case ConsoleNotificationMessage.Id:
             message = new ConsoleNotificationMessage();
+            break;
+
+        case StartFileUploadResponseMessage.Id:
+            message = new StartFileUploadResponseMessage();
+            break;
+
+        case TransferChunkResponseMessage.Id:
+            message = new TransferChunkResponseMessage();
             break;
 
         default:
