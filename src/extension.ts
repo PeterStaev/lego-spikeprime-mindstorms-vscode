@@ -402,7 +402,7 @@ async function terminateCurrentProgram() {
     }
 
     try {
-        const succeess = await vscode.window.withProgress(
+        const success = await vscode.window.withProgress(
             {
                 location: vscode.ProgressLocation.Notification,
                 title: "Terminating Running Program...",
@@ -410,7 +410,7 @@ async function terminateCurrentProgram() {
             () => client.startStopProgram(currentStartedProgramSlotId!, true),
         );
 
-        if (!succeess) {
+        if (!success) {
             vscode.window.showErrorMessage("Terminating program not acknowledged from hub!");
             return;
         }
