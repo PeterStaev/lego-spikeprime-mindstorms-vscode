@@ -20,7 +20,7 @@ Clicking on the status will either connect or disconnect (if already connected).
 Once connected you can start a running program by choosing its slot.
 ![slot-selection](images/slot-selection.png)
 
-Also once you are connected in any python file you can execute commands conveniently by using the approriate button at the top right of the editor file:
+Also once you are connected in any python file you can execute commands conveniently by using the appropriate button at the top right of the editor file:
 
 ![file-actions](images/file-actions.png)
 
