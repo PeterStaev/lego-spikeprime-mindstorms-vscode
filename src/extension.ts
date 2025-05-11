@@ -212,8 +212,8 @@ export function activate(context: vscode.ExtensionContext) {
                 const input = vscode.window.createQuickPick();
 
                 input.title = "Autostart";
-                input.step = 3;
-                input.totalSteps = 3;
+                input.step = 2;
+                input.totalSteps = 2;
                 input.placeholder = "Should the program start automatically when uploaded?";
                 input.items = [
                     { label: "yes" },
@@ -287,7 +287,7 @@ async function performUploadProgram(slotId: number, progress?: vscode.Progress<{
             assembledFilePath = path.join(os.tmpdir(), currentlyOpenTabFileName + ".assembled.py");
         }
 
-        fs.writeFileSync(assembledFilePath, assembledFile, "utf8");
+        fs.writeFileSync(assembledFilePath, assembledFile!, "utf8");
 
         let compileResult: mpy.CompileResult | undefined;
 

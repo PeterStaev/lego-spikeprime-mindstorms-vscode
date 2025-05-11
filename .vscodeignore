@@ -4,7 +4,7 @@ src
 .gitignore
 .yarnrc
 **/tsconfig.json
-**/.eslintrc.json
+**/eslint.config.mjs
 **/*.map
 **/*.ts
 .samples/**
@@ -12,6 +12,3 @@ src
 node_modules
 webpack.config.json
 out
-
-# Externals from webpack
-!node_modules/@pybricks/mpy-cross-v5
