@@ -3,15 +3,11 @@ import * as mpy from "@pybricks/mpy-cross-v6";
 import * as fs from "fs";
 import * as os from "os";
 import * as path from "path";
-import { SerialPort } from "serialport";
 import * as vscode from "vscode";
 
 import { BleClient } from "./clients/ble-client";
 import { Logger } from "./logger";
-import { Rpc } from "./rpc";
 import { crc32WithAlignment } from "./utils";
-
-let rpc: Rpc;
 
 const writeEmitter = new vscode.EventEmitter<string>();
 const logger = new Logger(writeEmitter);
@@ -19,6 +15,7 @@ let terminal: vscode.Terminal | null;
 let hubStatusBarItem: vscode.StatusBarItem;
 let currentStartedProgramSlotId: number | undefined;
 let currentStartedProgramResolve: (() => void) | undefined;
+let mpyWasm: Uint8Array | undefined;
 
 const enum Command {
     ConnectToHub = "lego-spikeprime-mindstorms-vscode.connectToHub",
@@ -28,6 +25,10 @@ const enum Command {
 const client = new BleClient(logger);
 
 export function activate(context: vscode.ExtensionContext) {
+    // HACK: This is a workaround for https://github.com/pybricks/support/issues/2185
+    const wasmFilePath = path.join(__dirname, "mpy-cross-v6.wasm");
+    mpyWasm = fs.readFileSync(wasmFilePath);
+
     hubStatusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 1);
     hubStatusBarItem.show();
     updateHubStatusBarItem();
@@ -291,11 +292,11 @@ async function performUploadProgram(slotId: number, progress?: vscode.Progress<{
         let compileResult: mpy.CompileResult | undefined;
 
         if (config.get("legoSpikePrimeMindstorms.compileBeforeUpload")) {
-            // TODO: This doesn't seem to work as it fails to load the WASM module for some reason.
             compileResult = await mpy.compile(path.basename(assembledFilePath),
                 fs.readFileSync(assembledFilePath).toString("utf-8"),
-                ["-municode"],
-                "node_modules/@pybricks/mpy-cross-v6/build/mpy-cross-v6.wasm"
+                [],
+                undefined,
+                mpyWasm,
             );
 
             if (compileResult?.status !== 0) {
@@ -308,7 +309,7 @@ async function performUploadProgram(slotId: number, progress?: vscode.Progress<{
         const data = compileResult?.mpy ?? fs.readFileSync(assembledFilePath);
         const uploadSize = data.length;
 
-        await client.startFileUpload("program.py", slotId, crc32WithAlignment(data));
+        await client.startFileUpload(`program.${compileResult?.mpy ? "mpy" : "py"}`, slotId, crc32WithAlignment(data));
 
         const blockSize: number = client.maxChunkSize!;
         const increment = (1 / Math.ceil(uploadSize / blockSize)) * 100;
@@ -355,7 +356,7 @@ async function updateHubStatusBarItem() {
         hubStatusBarItem.command = Command.ConnectToHub;
     }
 
-    vscode.commands.executeCommand("setContext", "lego-spikeprime-mindstorms-vscode.isConnectedIn", !!rpc?.isOpenIn);
+    vscode.commands.executeCommand("setContext", "lego-spikeprime-mindstorms-vscode.isConnectedIn", client.isConnectedIn);
 }
 
 async function promptForSlot(currentStep?: number, totalSteps?: number): Promise<number> {
