@@ -1,0 +1,26 @@
+diff --git a/node_modules/@abandonware/noble/lib/mac/bindings.js b/node_modules/@abandonware/noble/lib/mac/bindings.js
+index c63486a..fa78af7 100644
+--- a/node_modules/@abandonware/noble/lib/mac/bindings.js
++++ b/node_modules/@abandonware/noble/lib/mac/bindings.js
+@@ -1,7 +1,7 @@
+ const { EventEmitter } = require('events');
+ const { inherits } = require('util');
+ const { resolve } = require('path');
+-const dir = resolve(__dirname, '..', '..');
++const dir = resolve(__dirname, '..');
+ const binding = require('node-gyp-build')(dir);
+ 
+ const { NobleMac } = binding;
+diff --git a/node_modules/@abandonware/noble/lib/win/bindings.js b/node_modules/@abandonware/noble/lib/win/bindings.js
+index 3a5eb52..b6b42e2 100644
+--- a/node_modules/@abandonware/noble/lib/win/bindings.js
++++ b/node_modules/@abandonware/noble/lib/win/bindings.js
+@@ -1,7 +1,7 @@
+ const { EventEmitter } = require('events');
+ const { inherits } = require('util');
+ const { resolve } = require('path');
+-const dir = resolve(__dirname, '..', '..');
++const dir = resolve(__dirname, '..');
+ const binding = require('node-gyp-build')(dir);
+ 
+ const { NobleWinrt } = binding;

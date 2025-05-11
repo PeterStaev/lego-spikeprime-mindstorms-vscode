@@ -1,4 +1,4 @@
-// eslint-disable-next-line @typescript-eslint/no-var-requires
+
 import { ReadlineParser } from "@serialport/parser-readline";
 
 import { SerialPort } from "serialport";
@@ -37,7 +37,7 @@ export class Rpc {
                     isPlainPrintIn = true;
                 }
             }
-            catch (e) {
+            catch {
                 // When data cannot be JSON parsed we re probably getting text from user's `print` command so we log it
                 isPlainPrintIn = true;
             }
@@ -107,7 +107,7 @@ export class Rpc {
                             clearTimeout(timeout);
                             resolve();
                         }
-                        catch (e) {
+                        catch {
                             // DO NOTHING
                         }
                     };

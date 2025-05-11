@@ -1,0 +1,33 @@
+diff --git a/node_modules/@pybricks/mpy-cross-v6/build/index.d.ts b/node_modules/@pybricks/mpy-cross-v6/build/index.d.ts
+index a10f76a..0e55b8e 100644
+--- a/node_modules/@pybricks/mpy-cross-v6/build/index.d.ts
++++ b/node_modules/@pybricks/mpy-cross-v6/build/index.d.ts
+@@ -23,5 +23,5 @@ export interface CompileResult {
+  * @param options Command line arguments for mpy-cross.
+  * @param wasmPath Path to location of `mpy-cross-v6.wasm`.
+  */
+-export declare function compile(fileName: string, fileContents: string, options?: string[], wasmPath?: string): Promise<CompileResult>;
++export declare function compile(fileName: string, fileContents: string, options?: string[], wasmPath?: string, wasmBinary?: Uint8Array): Promise<CompileResult>;
+ //# sourceMappingURL=index.d.ts.map
+\ No newline at end of file
+diff --git a/node_modules/@pybricks/mpy-cross-v6/build/index.js b/node_modules/@pybricks/mpy-cross-v6/build/index.js
+index b0f7441..2c30973 100644
+--- a/node_modules/@pybricks/mpy-cross-v6/build/index.js
++++ b/node_modules/@pybricks/mpy-cross-v6/build/index.js
+@@ -20,7 +20,7 @@ var MpyCross = mpy_cross_v6_1.default;
+  * @param options Command line arguments for mpy-cross.
+  * @param wasmPath Path to location of `mpy-cross-v6.wasm`.
+  */
+-function compile(fileName, fileContents, options, wasmPath) {
++function compile(fileName, fileContents, options, wasmPath, wasmBinary) {
+     return new Promise(function (resolve, reject) {
+         try {
+             var args = [fileName];
+@@ -30,6 +30,7 @@ function compile(fileName, fileContents, options, wasmPath) {
+             MpyCross({
+                 arguments: args,
+                 inputFileContents: fileContents,
++                wasmBinary: wasmBinary,
+                 callback: function (status, mpy, out, err) {
+                     return resolve({ status: status, mpy: mpy, out: out, err: err });
+                 },

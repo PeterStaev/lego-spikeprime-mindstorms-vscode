@@ -2,8 +2,8 @@
 
 "use strict";
 
-// eslint-disable-next-line @typescript-eslint/no-var-requires
 const path = require("path");
+const CopyWebpackPlugin = require("copy-webpack-plugin");
 
 /** @type {import('webpack').Configuration}*/
 const config = {
@@ -22,11 +22,12 @@ const config = {
         {
             vscode: "commonjs vscode", // the vscode-module is created on-the-fly and must be excluded. Add other modules that cannot be webpack'ed, 📖 -> https://webpack.js.org/configuration/externals/
         },
-        "@pybricks/mpy-cross-v5",
+        "@abandonware/bluetooth-hci-socket",
+        "ws",
     ],
     resolve: {
         // support reading TypeScript and JavaScript files, 📖 -> https://github.com/TypeStrong/ts-loader
-        extensions: [".ts", ".js"],
+        extensions: [".ts", ".js", ".json"],
     },
     module: {
         rules: [
@@ -39,7 +40,21 @@ const config = {
                     },
                 ],
             },
+            {
+                test: /\.json$/,
+                type: "asset/inline",
+            },
         ],
     },
+    plugins: [
+        new CopyWebpackPlugin({
+            patterns: [
+                {
+                    from: path.resolve(__dirname, "node_modules/@pybricks/mpy-cross-v6/build/mpy-cross-v6.wasm"),
+                    to: path.resolve(__dirname, "dist"), // Copy wasm to dist
+                },
+            ],
+        }),
+    ],
 };
 module.exports = config;
