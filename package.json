@@ -29,10 +29,10 @@
             "default": false,
             "description": "Saves the result after importing files into current script."
           },
-          "legoSpikePrimeMindstorms.commandTimeoutSeconds": {
+          "legoSpikePrimeMindstorms.bleConnectionTimeoutSeconds": {
             "type": "number",
-            "default": 30,
-            "description": "Timeout in seconds after which the connection/command will be cancelled."
+            "default": 5,
+            "description": "Timeout in seconds for which to scan for Bluetooth devices and then connect to the selected one."
           }
         }
       }
@@ -116,7 +116,7 @@
   },
   "license": "Apache-2.0",
   "scripts": {
-    "vscode:prepublish": "npm run compile",
+    "vscode:prepublish": "npm run webpack",
     "compile": "webpack --mode development",
     "webpack": "webpack --mode production",
     "pretest": "npm run compile && npm run lint",

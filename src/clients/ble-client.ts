@@ -1,6 +1,5 @@
 import * as noble from "@abandonware/noble";
 
-import { QuickPickItem } from "vscode";
 import * as vscode from "vscode";
 
 import { pack, unpack } from "../cobs";
@@ -23,7 +22,6 @@ const SERVICE_UUID = "0000FD02-0000-1000-8000-00805F9B34FB";
 // Note RX/TX are from the point of the hub!
 const RX_CHAR_UUID = "0000FD02-0001-1000-8000-00805F9B34FB";
 const TX_CHAR_UUID = "0000FD02-0002-1000-8000-00805F9B34FB";
-const TIMEOUT_SECONDS = 5; // TODO: make this configurable
 
 export class BleClient {
     public onClosed: vscode.EventEmitter<void> = new vscode.EventEmitter<void>();
@@ -64,7 +62,7 @@ export class BleClient {
     }
 
     public async list() {
-        const result: QuickPickItem[] = [];
+        const result: vscode.QuickPickItem[] = [];
 
         noble.on("discover", async (peripheral) => {
             result.push({
@@ -77,7 +75,7 @@ export class BleClient {
         await setTimeoutAsync(() => {
             noble.stopScanningAsync();
             noble.removeAllListeners("discover");
-        }, TIMEOUT_SECONDS * 1000);
+        }, (vscode.workspace.getConfiguration().get<number>("legoSpikePrimeMindstorms.bleConnectionTimeoutSeconds") || 5) * 1000);
 
         return result;
     }
@@ -90,6 +88,7 @@ export class BleClient {
                         return;
                     }
                     await noble.stopScanningAsync();
+                    noble.removeAllListeners("discover");
 
                     this._peripheral = peripheral;
                     this._peripheral.on("disconnect", this.onDisconnect.bind(this));
@@ -113,9 +112,8 @@ export class BleClient {
                     this._rxCharacteristic.subscribe();
                     this._rxCharacteristic.on("data", this.onData.bind(this));
 
+                    await setTimeoutAsync(() => { /* noop */ }, 250); // HACK: This seems to be needed on Windows to wait for the BLE stack to be ready
                     this._infoResponse = await this.sendMessage<InfoRequestMessage, InfoResponseMessage>(new InfoRequestMessage(), InfoResponseMessage);
-
-                    noble.removeAllListeners("discover");
 
                     resolve();
                 }
@@ -131,7 +129,7 @@ export class BleClient {
                     await noble.stopScanningAsync();
                     reject(new Error("Hub connection timed out"));
                 }
-            }, TIMEOUT_SECONDS * 1000);
+            }, (vscode.workspace.getConfiguration().get<number>("legoSpikePrimeMindstorms.bleConnectionTimeoutSeconds") || 5) * 1000);
         });
 
     }

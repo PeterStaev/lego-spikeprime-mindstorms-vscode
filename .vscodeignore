@@ -1,5 +1,7 @@
 .vscode
 .vscode-test
+.github
+patches
 src
 .gitignore
 .yarnrc
