@@ -5,7 +5,9 @@ import * as os from "os";
 import * as path from "path";
 import * as vscode from "vscode";
 
+import { BaseClient } from "./clients/base-client";
 import { BleClient } from "./clients/ble-client";
+import { UsbClient } from "./clients/usb-client";
 import { Logger } from "./logger";
 import { crc32WithAlignment } from "./utils";
 
@@ -16,13 +18,21 @@ let hubStatusBarItem: vscode.StatusBarItem;
 let currentStartedProgramSlotId: number | undefined;
 let currentStartedProgramResolve: (() => void) | undefined;
 let mpyWasm: Uint8Array | undefined;
+let client: BaseClient | undefined;
+const supportedClients: vscode.QuickPickItem[] = [
+    { label: Client.Ble },
+    { label: Client.Usb },
+];
 
 const enum Command {
     ConnectToHub = "lego-spikeprime-mindstorms-vscode.connectToHub",
     DisconnectFromHub = "lego-spikeprime-mindstorms-vscode.disconnectFromHub",
 }
 
-const client = new BleClient(logger);
+const enum Client {
+    Ble = "Bluetooth",
+    Usb = "USB"
+}
 
 export function activate(context: vscode.ExtensionContext) {
     // HACK: This is a workaround for https://github.com/pybricks/support/issues/2185
@@ -33,39 +43,60 @@ export function activate(context: vscode.ExtensionContext) {
     hubStatusBarItem.show();
     updateHubStatusBarItem();
 
-    client.onClosed.event(() => {
-        void updateHubStatusBarItem();
-        currentStartedProgramSlotId = undefined;
-        currentStartedProgramResolve = undefined;
-    });
-
-    client.onProgramRunningChanged.event((isRunningIn) => {
-        if (isRunningIn && currentStartedProgramSlotId !== undefined) {
-            void vscode.window.withProgress(
-                {
-                    location: vscode.ProgressLocation.Notification,
-                    title: `Running Program #${currentStartedProgramSlotId}...`,
-                    cancellable: true,
-                },
-                (progress, token) => new Promise<void>((resolve, reject) => {
-                    currentStartedProgramResolve = resolve;
-                    token.onCancellationRequested(() => {
-                        void terminateCurrentProgram();
-                        resolve();
-                    });
-                }),
-            );
-        }
-
-        if (!isRunningIn && currentStartedProgramResolve) {
-            currentStartedProgramResolve();
-            currentStartedProgramResolve = undefined;
-        }
-    });
-
     const connectToHubCommand = vscode.commands.registerCommand(Command.ConnectToHub, async () => {
         try {
-            const selection = await vscode.window.showQuickPick(client.list(), { canPickMany: false });
+            const clientSelection = await vscode.window.showQuickPick(supportedClients, { canPickMany: false });
+            if (!clientSelection) {
+                return;
+            }
+
+            switch (clientSelection.label) {
+                case Client.Ble:
+                    client = new BleClient(logger);
+                    break;
+
+                case Client.Usb:
+                    client = new UsbClient(logger);
+                    break;
+
+                default:
+                    throw new Error("Unsupported client");
+
+            }
+
+
+            client?.onClosed.event(() => {
+                void updateHubStatusBarItem();
+                currentStartedProgramSlotId = undefined;
+                currentStartedProgramResolve = undefined;
+                client = undefined;
+            });
+
+            client?.onProgramRunningChanged.event((isRunningIn) => {
+                if (isRunningIn && currentStartedProgramSlotId !== undefined) {
+                    void vscode.window.withProgress(
+                        {
+                            location: vscode.ProgressLocation.Notification,
+                            title: `Running Program #${currentStartedProgramSlotId}...`,
+                            cancellable: true,
+                        },
+                        (progress, token) => new Promise<void>((resolve, reject) => {
+                            currentStartedProgramResolve = resolve;
+                            token.onCancellationRequested(() => {
+                                void terminateCurrentProgram();
+                                resolve();
+                            });
+                        }),
+                    );
+                }
+
+                if (!isRunningIn && currentStartedProgramResolve) {
+                    currentStartedProgramResolve();
+                    currentStartedProgramResolve = undefined;
+                }
+            });
+
+            const selection = await vscode.window.showQuickPick(client!.list(), { canPickMany: false });
 
             if (!selection) {
                 return;
@@ -76,7 +107,7 @@ export function activate(context: vscode.ExtensionContext) {
                     location: vscode.ProgressLocation.Notification,
                     title: "Connecting to Hub...",
                 },
-                () => client.connect(selection.description!),
+                () => client!.connect(selection.description!),
             );
 
             await updateHubStatusBarItem();
@@ -89,7 +120,7 @@ export function activate(context: vscode.ExtensionContext) {
     });
 
     const disconnectFromHubCommand = vscode.commands.registerCommand(Command.DisconnectFromHub, async () => {
-        if (!client.isConnectedIn) {
+        if (!client?.isConnectedIn) {
             return;
         }
 
@@ -98,12 +129,12 @@ export function activate(context: vscode.ExtensionContext) {
                 location: vscode.ProgressLocation.Notification,
                 title: "Disconnecting from Hub...",
             },
-            () => client.disconnect(),
+            () => client!.disconnect(),
         );
     });
 
     const uploadProgramCommand = vscode.commands.registerCommand("lego-spikeprime-mindstorms-vscode.uploadProgram", async () => {
-        if (!client.isConnectedIn) {
+        if (!client?.isConnectedIn) {
             vscode.window.showErrorMessage("LEGO Hub not connected! Please connect first!");
             return;
         }
@@ -172,7 +203,7 @@ export function activate(context: vscode.ExtensionContext) {
     });
 
     const startProgramCommand = vscode.commands.registerCommand("lego-spikeprime-mindstorms-vscode.startProgram", async () => {
-        if (!client.isConnectedIn) {
+        if (!client?.isConnectedIn) {
             vscode.window.showErrorMessage("LEGO Hub not connected! Please connect first!");
             return;
         }
@@ -265,7 +296,7 @@ export function activate(context: vscode.ExtensionContext) {
 
 // this method is called when your extension is deactivated
 export async function deactivate() {
-    if (client.isConnectedIn) {
+    if (client?.isConnectedIn) {
         await client.disconnect();
     }
 }
@@ -309,9 +340,9 @@ async function performUploadProgram(slotId: number, progress?: vscode.Progress<{
         const data = compileResult?.mpy ?? fs.readFileSync(assembledFilePath);
         const uploadSize = data.length;
 
-        await client.startFileUpload(`program.${compileResult?.mpy ? "mpy" : "py"}`, slotId, crc32WithAlignment(data));
+        await client!.startFileUpload(`program.${compileResult?.mpy ? "mpy" : "py"}`, slotId, crc32WithAlignment(data));
 
-        const blockSize: number = client.maxChunkSize!;
+        const blockSize: number = client!.maxChunkSize!;
         const increment = (1 / Math.ceil(uploadSize / blockSize)) * 100;
         let runningCrc = 0;
 
@@ -319,7 +350,7 @@ async function performUploadProgram(slotId: number, progress?: vscode.Progress<{
             const chunk = data.slice(loop, loop + blockSize);
             runningCrc = crc32WithAlignment(chunk, runningCrc);
 
-            await client.transferChunk(chunk, runningCrc);
+            await client!.transferChunk(chunk, runningCrc);
 
             progress?.report({ increment });
         }
@@ -347,7 +378,7 @@ function showTerminal() {
 }
 
 async function updateHubStatusBarItem() {
-    if (client.isConnectedIn) {
+    if (client?.isConnectedIn) {
         hubStatusBarItem.text = `$(repl) LEGO Hub: Connected (${client.firmwareVersion} / ${client.rpcVersion})`;
         hubStatusBarItem.command = Command.DisconnectFromHub;
     }
@@ -356,7 +387,7 @@ async function updateHubStatusBarItem() {
         hubStatusBarItem.command = Command.ConnectToHub;
     }
 
-    vscode.commands.executeCommand("setContext", "lego-spikeprime-mindstorms-vscode.isConnectedIn", client.isConnectedIn);
+    vscode.commands.executeCommand("setContext", "lego-spikeprime-mindstorms-vscode.isConnectedIn", client?.isConnectedIn);
 }
 
 async function promptForSlot(currentStep?: number, totalSteps?: number): Promise<number> {
@@ -391,7 +422,7 @@ async function promptForSlot(currentStep?: number, totalSteps?: number): Promise
 }
 
 async function terminateCurrentProgram() {
-    if (!client.isConnectedIn) {
+    if (!client?.isConnectedIn) {
         vscode.window.showErrorMessage("LEGO Hub not connected! Please connect first!");
         return;
     }
@@ -407,7 +438,7 @@ async function terminateCurrentProgram() {
                 location: vscode.ProgressLocation.Notification,
                 title: "Terminating Running Program...",
             },
-            () => client.startStopProgram(currentStartedProgramSlotId!, true),
+            () => client!.startStopProgram(currentStartedProgramSlotId!, true),
         );
 
         if (!success) {
@@ -433,7 +464,7 @@ async function startProgramInSlot(slotId: number) {
             location: vscode.ProgressLocation.Notification,
             title: `Starting Program in Slot #${slotId}...`,
         },
-        () => client.startStopProgram(slotId),
+        () => client!.startStopProgram(slotId),
     );
 
     if (!success) {

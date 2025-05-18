@@ -2,20 +2,10 @@ import * as noble from "@abandonware/noble";
 
 import * as vscode from "vscode";
 
-import { pack, unpack } from "../cobs";
-import { Logger } from "../logger";
-import { BaseMessage } from "../messages/base-message";
-import { ConsoleNotificationMessage } from "../messages/console-notification-message";
 import { InfoRequestMessage } from "../messages/info-request-message";
 import { InfoResponseMessage } from "../messages/info-response-message";
-import { ProgramFlowNotificationMessage } from "../messages/program-flow-notification-message";
-import { ProgramFlowRequestMessage } from "../messages/program-flow-request-message";
-import { ProgramFlowResponseMessage } from "../messages/program-flow-response-message";
-import { StartFileUploadRequestMessage } from "../messages/start-file-upload-request-message";
-import { StartFileUploadResponseMessage } from "../messages/start-file-upload-response-message";
-import { TransferChunkRequestMessage } from "../messages/transfer-chunk-request-message";
-import { TransferChunkResponseMessage } from "../messages/transfer-chunk-response-message";
 import { setTimeoutAsync } from "../utils";
+import { BaseClient } from "./base-client";
 
 const SERVICE_UUID = "0000FD02-0000-1000-8000-00805F9B34FB";
 
@@ -23,43 +13,14 @@ const SERVICE_UUID = "0000FD02-0000-1000-8000-00805F9B34FB";
 const RX_CHAR_UUID = "0000FD02-0001-1000-8000-00805F9B34FB";
 const TX_CHAR_UUID = "0000FD02-0002-1000-8000-00805F9B34FB";
 
-export class BleClient {
-    public onClosed: vscode.EventEmitter<void> = new vscode.EventEmitter<void>();
-    public onProgramRunningChanged: vscode.EventEmitter<boolean> = new vscode.EventEmitter<boolean>();
+export class BleClient extends BaseClient {
     public get isConnectedIn(): boolean {
         return !!this._peripheral;
     }
-    public get firmwareVersion() {
-        if (!this._infoResponse) {
-            return undefined;
-        }
 
-        return `${this._infoResponse.firmwareMajor}.${this._infoResponse.firmwareMinor}.${this._infoResponse.firmwareBuild}`;
-    }
-    public get rpcVersion() {
-        if (!this._infoResponse) {
-            return undefined;
-        }
-
-        return `${this._infoResponse.rpcMajor}.${this._infoResponse.rpcMinor}.${this._infoResponse.rpcBuild}`;
-    }
-    public get maxChunkSize() {
-        if (!this._infoResponse) {
-            return undefined;
-        }
-        return this._infoResponse.maxChunkSize;
-    }
-
-    private _logger: Logger;
     private _peripheral: noble.Peripheral | undefined;
     private _rxCharacteristic: noble.Characteristic | undefined;
     private _txCharacteristic: noble.Characteristic | undefined;
-    private _pendingMessagesPromises = new Map<number, [(result: BaseMessage | PromiseLike<BaseMessage>) => void, (e: string) => void]>();
-    private _infoResponse: InfoResponseMessage | undefined;
-
-    constructor(logger: Logger) {
-        this._logger = logger;
-    }
 
     public async list() {
         const result: vscode.QuickPickItem[] = [];
@@ -140,118 +101,18 @@ export class BleClient {
         }
     }
 
-    public async startStopProgram(slot: number, isStopIn = false) {
-        const response = await this.sendMessage<ProgramFlowRequestMessage, ProgramFlowResponseMessage>(new ProgramFlowRequestMessage(slot, isStopIn), ProgramFlowResponseMessage);
-        return response.IsAckIn;
+    protected writeData(data: Buffer): Promise<void> | undefined {
+        return this._txCharacteristic?.writeAsync(data, true);
     }
 
-    public async startFileUpload(fileName: string, slot: number, crc: number) {
-        const uploadResponse = await this.sendMessage<StartFileUploadRequestMessage, StartFileUploadResponseMessage>(
-            new StartFileUploadRequestMessage(fileName, slot, crc),
-            StartFileUploadResponseMessage,
-        );
-
-        if (!uploadResponse.IsAckIn) {
-            throw new Error("Failed to start file upload");
-        }
-    }
-
-    public async transferChunk(chunk: Uint8Array, runningCrc: number) {
-        const response = await this.sendMessage<TransferChunkRequestMessage, TransferChunkResponseMessage>(
-            new TransferChunkRequestMessage(runningCrc, chunk),
-            TransferChunkResponseMessage,
-        );
-
-        if (!response.IsAckIn) {
-            throw new Error("Failed to transfer chunk");
-        }
-    }
-
-    private async sendMessage<T extends BaseMessage, U extends BaseMessage>(message: T, result: typeof BaseMessage): Promise<U> {
-        const payload = pack(message.serialize());
-        const resultPromise = new Promise<BaseMessage>((resolve, reject) => {
-            this._pendingMessagesPromises.set(result.Id, [resolve, reject]);
-        });
-
-        // Split data in chunks based on maxPacketSize. If none, assume it is small enough to send in one go.
-        const packetSize = this._infoResponse?.maxPacketSize ?? payload.length;
-        for (let loop = 0; loop < payload.length; loop += packetSize) {
-            await this._txCharacteristic?.writeAsync(Buffer.from(payload.slice(loop, loop + packetSize)), true);
-        }
-
-        return resultPromise as Promise<U>;
-    }
-
-    private onData(data: Buffer) {
-        try {
-            const unpacked = unpack(data);
-            const [messageId, resultMessage] = deserializeMessage(unpacked);
-            const pendingMessage = this._pendingMessagesPromises.get(messageId);
-            if (pendingMessage) {
-                const [resolve] = pendingMessage;
-                resolve(resultMessage);
-                this._pendingMessagesPromises.delete(messageId);
-            }
-            else if (resultMessage instanceof ProgramFlowNotificationMessage) {
-                this.onProgramRunningChanged.fire(!resultMessage.isStopIn!);
-            }
-            else if (resultMessage instanceof ConsoleNotificationMessage) {
-                this._logger.log(resultMessage.message ?? "");
-            }
-        }
-        catch (e) {
-            this._logger.error(`Error deserializing message: ${e}`);
-        }
-    }
-
-    private onDisconnect() {
+    protected onDisconnect() {
         this._rxCharacteristic?.unsubscribe();
         this._rxCharacteristic?.removeAllListeners("data");
 
         this._peripheral = undefined;
         this._rxCharacteristic = undefined;
         this._txCharacteristic = undefined;
-        this._infoResponse = undefined;
-        this._pendingMessagesPromises.clear();
 
-        this.onClosed.fire();
+        super.onDisconnect();
     }
-}
-
-function deserializeMessage(data: Uint8Array): [id: number, message: BaseMessage] {
-    const messageId = data[0];
-    let message: BaseMessage;
-
-    switch (messageId) {
-        case InfoResponseMessage.Id:
-            message = new InfoResponseMessage();
-            break;
-
-        case ProgramFlowNotificationMessage.Id:
-            message = new ProgramFlowNotificationMessage();
-            break;
-
-        case ProgramFlowResponseMessage.Id:
-            message = new ProgramFlowResponseMessage();
-            break;
-
-        case ConsoleNotificationMessage.Id:
-            message = new ConsoleNotificationMessage();
-            break;
-
-        case StartFileUploadResponseMessage.Id:
-            message = new StartFileUploadResponseMessage();
-            break;
-
-        case TransferChunkResponseMessage.Id:
-            message = new TransferChunkResponseMessage();
-            break;
-
-        default:
-            throw new Error(`Unknown message ID: ${messageId}`);
-    }
-
-    message.deserialize(data);
-
-    return [messageId, message];
 }
