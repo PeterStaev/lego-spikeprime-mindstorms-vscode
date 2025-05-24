@@ -3,10 +3,7 @@
 This extension helps you connect to the SPIKE Prime or MINDSTORMS Robot Inventor brick and perform various operations on it.
 
 > [!IMPORTANT]  
-> Starting from version 2.x of the extension it will work ONLY with HubOS3. If you are running on the legacy HubOS2, please use the 1.x version and disable auto-updates for the extension.
-
-> [!IMPORTANT]  
-> Currently the plugin supports only Bluetooth connection. USB connection coming in the future.
+> Starting with version 2.x of the extension it will work ONLY with HubOS3. If you are running on the legacy HubOS2, please use the 1.x version and disable auto-updates for the extension.
 
 ## Features
 
@@ -34,6 +31,14 @@ from file_name import *
 ```
 
 is supported. Files not found are skipped (in the hope they exist on the hub). Nevertheless an error will inform you.
+
+### Custom Preprocessor
+
+The plugin has a settings where you can specify an external program/script that should be executed before uploading the program
+to the hub. This will receive the contents of the file as stdin. It should output the resulting file contents to stdout and exit the process with `0`. 
+
+> [!NOTE]  
+> This will be executed AFTER the builtin preprocessor for combining the files and right before compiling and uploading the program to the hub!
 
 ### Compilation
 

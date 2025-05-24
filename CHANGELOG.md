@@ -1,5 +1,10 @@
 # Change Log
 
+## 2.1.0 - 2025-05-xx
+
+- Add USB connection support for HubOS3
+- Add support for a custom preprocessor
+
 ## 2.0.0 - 2025-05-12
 
 - Refactor plugin to work with HubOS3 BLE connection
