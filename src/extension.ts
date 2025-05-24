@@ -1,8 +1,11 @@
 import * as mpy from "@pybricks/mpy-cross-v6";
 
+import * as cp from "child_process";
 import * as fs from "fs";
 import * as os from "os";
 import * as path from "path";
+import * as shellQuote from "shell-quote";
+import { v7 } from "uuid";
 import * as vscode from "vscode";
 
 import { BaseClient } from "./clients/base-client";
@@ -309,19 +312,33 @@ async function performUploadProgram(slotId: number, progress?: vscode.Progress<{
     if (currentlyOpenTabFilePath && currentlyOpenTabFileUri) {
         const currentlyOpenTabFileName = path.basename(currentlyOpenTabFilePath).replace(path.extname(currentlyOpenTabFilePath), "");
         const assembledFile = assembleFile(currentlyOpenTabFileUri.fsPath);
-
-        let assembledFilePath;
-        if (config.get("legoSpikePrimeMindstorms.saveFileToUpload")) {
-            assembledFilePath = path.join(path.dirname(currentlyOpenTabFilePath), currentlyOpenTabFileName + ".assembled.py");
-        }
-        else {
-            assembledFilePath = path.join(os.tmpdir(), currentlyOpenTabFileName + ".assembled.py");
-        }
+        const isSaveFileToUploadIn = config.get<boolean>("legoSpikePrimeMindstorms.saveFileToUpload");
+        const customPreprocessorPath = config.get<string>("legoSpikePrimeMindstorms.customPrepocessorPath");
+        let assembledFilePath = isSaveFileToUploadIn
+            ? path.join(path.dirname(currentlyOpenTabFilePath), `${currentlyOpenTabFileName}.assembled.py`)
+            : path.join(os.tmpdir(), `${v7()}.py`);
 
         fs.writeFileSync(assembledFilePath, assembledFile!, "utf8");
 
-        let compileResult: mpy.CompileResult | undefined;
+        if (customPreprocessorPath) {
+            const preprocessedFilePath = await executeCustomPreprocessor(customPreprocessorPath, assembledFilePath);
 
+            if (preprocessedFilePath !== assembledFilePath) {
+                if (!isSaveFileToUploadIn) {
+                    // Remove previous temp assembled file
+                    try {
+                        fs.rmSync(assembledFilePath);
+                    }
+                    catch {
+                        // Ignore error if error occurs while deleting the file
+                    }
+                }
+
+                assembledFilePath = preprocessedFilePath;
+            }
+        }
+
+        let compileResult: mpy.CompileResult | undefined;
         if (config.get("legoSpikePrimeMindstorms.compileBeforeUpload")) {
             compileResult = await mpy.compile(path.basename(assembledFilePath),
                 fs.readFileSync(assembledFilePath).toString("utf-8"),
@@ -353,6 +370,16 @@ async function performUploadProgram(slotId: number, progress?: vscode.Progress<{
             await client!.transferChunk(chunk, runningCrc);
 
             progress?.report({ increment });
+        }
+
+        // Remove temp file if needed
+        if (customPreprocessorPath || !isSaveFileToUploadIn) {
+            try {
+                fs.rmSync(assembledFilePath);
+            }
+            catch {
+                // Ignore error if error occurs while deleting the file
+            }
         }
     }
 }
@@ -534,3 +561,50 @@ function assembleFile(filePath: string): Uint8Array | undefined {
     }
 }
 
+/**
+ * Executes a custom preprocessor script on a given file and returns the path to the preprocessed output file.
+ *
+ * This function spawns a child process to run the specified custom preprocessor, passing the input file via stdin
+ * and writing the output to a temporary file. If the preprocessor exits with a non-zero code, the promise is rejected.
+ * Any errors from the preprocessor's stderr are logged and shown to the user via VS Code notifications.
+ *
+ * @param customPreprocessorPath - The command line string specifying the path to the custom preprocessor executable, optionally with arguments.
+ * @param filePath - The path to the input file to be preprocessed.
+ * @returns A promise that resolves with the path to the preprocessed output file, or rejects if the preprocessor fails.
+ */
+function executeCustomPreprocessor(customPreprocessorPath: string, filePath: string): Promise<string> {
+    return new Promise((resolve, reject) => {
+        if (!customPreprocessorPath) {
+            return filePath;
+        }
+
+        const preprocessedFilePath = path.join(os.tmpdir(), `${v7()}.py`);
+        const [executable, ...args] = shellQuote.parse(customPreprocessorPath);// TODO: split exec from args correctly
+        const child = cp.spawn(
+            executable.toString(),
+            args.map((arg) => arg.toString()),
+            {
+                stdio: [
+                    fs.openSync(filePath, "r"), // stdin
+                    fs.openSync(preprocessedFilePath, "w"),   // stdout
+                    "pipe",   // stderr
+                ],
+            },
+        );
+
+        child.stderr?.on("data", (data) => {
+            console.error(`Custom preprocessor error: ${data}`);
+            vscode.window.showErrorMessage(`Custom preprocessor error: ${data}`);
+        });
+        child.on("close", (code) => {
+            if (code !== 0) {
+                console.error(`Custom preprocessor exited with code ${code}`);
+                vscode.window.showErrorMessage(`Custom preprocessor exited with code ${code}`);
+                reject(new Error(`Custom preprocessor exited with code ${code}`));
+            }
+            else {
+                resolve(preprocessedFilePath);
+            }
+        });
+    });
+}

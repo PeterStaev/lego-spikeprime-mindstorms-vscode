@@ -33,6 +33,11 @@
             "type": "number",
             "default": 5,
             "description": "Timeout in seconds for which to scan for Bluetooth devices and then connect to the selected one."
+          },
+          "legoSpikePrimeMindstorms.customPrepocessorPath": {
+            "type": "string",
+            "default": "",
+            "description": "Path to a custom preprocessor script/executable that will be run before uploading the program to the LEGO hub. The file contents will be sent as stdin and it must output the resulting file contents to stdout. Any non-zero exit result will be considered an error and execution will not continue."
           }
         }
       }
@@ -135,6 +140,7 @@
     "@types/glob": "^8.1.0",
     "@types/mocha": "^9.1.0",
     "@types/node": "^22.8.2",
+    "@types/shell-quote": "^1.7.5",
     "@types/vscode": "^1.55.0",
     "@typescript-eslint/eslint-plugin": "^8.32.0",
     "@typescript-eslint/parser": "^8.32.0",
@@ -159,6 +165,8 @@
     "@pybricks/mpy-cross-v6": "^2.0.0",
     "@serialport/parser-readline": "^12.0.0",
     "crc-32": "^1.2.2",
-    "serialport": "^12.0.0"
+    "serialport": "^12.0.0",
+    "shell-quote": "^1.8.2",
+    "uuid": "^11.1.0"
   }
 }
