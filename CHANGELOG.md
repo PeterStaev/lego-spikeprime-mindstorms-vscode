@@ -1,6 +1,6 @@
 # Change Log
 
-## 2.1.0 - 2025-05-xx
+## 2.1.0 - 2025-05-x25
 
 - Add USB connection support for HubOS3
 - Add support for a custom preprocessor

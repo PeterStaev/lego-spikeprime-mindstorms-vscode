@@ -575,11 +575,12 @@ function assembleFile(filePath: string): Uint8Array | undefined {
 function executeCustomPreprocessor(customPreprocessorPath: string, filePath: string): Promise<string> {
     return new Promise((resolve, reject) => {
         if (!customPreprocessorPath) {
-            return filePath;
+            resolve(filePath);
+            return;
         }
 
         const preprocessedFilePath = path.join(os.tmpdir(), `${v7()}.py`);
-        const [executable, ...args] = shellQuote.parse(customPreprocessorPath);// TODO: split exec from args correctly
+        const [executable, ...args] = shellQuote.parse(customPreprocessorPath);
         const child = cp.spawn(
             executable.toString(),
             args.map((arg) => arg.toString()),

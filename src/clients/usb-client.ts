@@ -53,15 +53,17 @@ export class UsbClient extends BaseClient {
                     reject(err);
                 }
                 else {
-                    this.sendMessage(new InfoRequestMessage(), InfoResponseMessage).then(
-                        (response) => {
-                            this._infoResponse = response as InfoResponseMessage;
-                            resolve();
-                        },
-                        (error) => {
-                            reject(error);
-                        },
-                    );
+                    setTimeout(() => {
+                        this.sendMessage(new InfoRequestMessage(), InfoResponseMessage).then(
+                            (response) => {
+                                this._infoResponse = response as InfoResponseMessage;
+                                resolve();
+                            },
+                            (error) => {
+                                reject(error);
+                            },
+                        );
+                    }, 250); // This is needed to make sure the device is fully inited.
                 }
             });
         });
