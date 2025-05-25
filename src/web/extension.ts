@@ -1,6 +1,4 @@
-/* eslint-disable no-undef */
-// The module 'vscode' contains the VS Code extensibility API
-// Import the module and reference it with the alias vscode in your code below
+
 import * as vscode from "vscode";
 
 // this method is called when your extension is activated
@@ -15,31 +13,37 @@ export async function activate(context: vscode.ExtensionContext) {
     // Now provide the implementation of the command with registerCommand
     // The commandId parameter must match the command field in package.json
     const disposable = vscode.commands.registerCommand("lego-spikeprime-mindstorms-vscode.connectToHub", async () => {
-        // The code you place here will be executed every time your command is executed
         await vscode.commands.executeCommand("workbench.experimental.requestSerialPort");
-        const test = await navigator.serial.getPorts();
-        const port = test[0];
-        await port.open({ baudRate: 115200 });
-        const info = await port.getInfo();
-        while (port.readable) {
-            const reader = port.readable.getReader();
-            try {
-                // eslint-disable-next-line no-constant-condition
-                while (true) {
-                    const { done, value } = await reader.read();
-                    if (done) {
-                        break;
-                    }
-                    console.log(value);
-                }
-            }
-            finally {
-                reader.releaseLock();
-            }
-        }
-        console.log(test);
+        const devices = await navigator.serial.getPorts();
+        console.log(devices);
+
+        // (navigator as any).bluetooth.requestDevice({ filters: [{ services: ["battery_service"] }] });
+        // The code you place here will be executed every time your command is executed
+        // await vscode.commands.executeCommand("workbench.experimental.requestSerialPort");
+
+        // const test = await navigator.serial.getPorts();
+        // const port = test[0];
+        // await port.open({ baudRate: 115200 });
+        // const info = await port.getInfo();
+        // while (port.readable) {
+        //     const reader = port.readable.getReader();
+        //     try {
+        //         // eslint-disable-next-line no-constant-condition
+        //         while (true) {
+        //             const { done, value } = await reader.read();
+        //             if (done) {
+        //                 break;
+        //             }
+        //             console.log(value);
+        //         }
+        //     }
+        //     finally {
+        //         reader.releaseLock();
+        //     }
+        // }
+        // console.log(test);
         // Display a message box to the user
-        vscode.window.showInformationMessage("Hello World from helloworld-web-sample in a web extension host!");
+        vscode.window.showInformationMessage("Hello World from helloworld-web-sample in a web extension host 153!");
     });
 
     context.subscriptions.push(disposable);
