@@ -32,6 +32,9 @@ from file_name import *
 
 is supported. Files not found are skipped (in the hope they exist on the hub). Nevertheless an error will inform you.
 
+> [!NOTE]  
+> This is not supported for web extension usage. 
+
 ### Custom Preprocessor
 
 The plugin has a settings where you can specify an external program/script that should be executed before uploading the program
@@ -39,6 +42,9 @@ to the hub. This will receive the contents of the file as stdin. It should outpu
 
 > [!NOTE]  
 > This will be executed AFTER the builtin preprocessor for combining the files and right before compiling and uploading the program to the hub!
+
+> [!NOTE]  
+> This is not supported for web extension usage. 
 
 ### Compilation
 
