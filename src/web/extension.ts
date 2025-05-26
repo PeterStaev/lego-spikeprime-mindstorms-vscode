@@ -1,4 +1,3 @@
-
 import * as mpy from "@pybricks/mpy-cross-v6";
 
 import * as vscode from "vscode";
@@ -58,7 +57,6 @@ export async function activate(context: vscode.ExtensionContext) {
             if (!programInfo) {
                 return;
             }
-
 
             await vscode.window.withProgress(
                 {

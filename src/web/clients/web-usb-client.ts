@@ -1,4 +1,3 @@
-// <reference types="@types/dom-serial" />
 import * as vscode from "vscode";
 
 import { BaseClient } from "../../clients/base-client";
@@ -110,17 +109,5 @@ export class WebUsbClient extends BaseClient {
                 this._reader.releaseLock();
             }
         }
-        // this._reader = this._port?.readable.pipeThrough(new TransformStream(new MessageTransformer())).getReader();
-        // while (this._reader) {
-        //     const { done, value } = await this._reader.read();
-
-        //     if (value) {
-        //         this.onData(value);
-        //     }
-
-        //     if (done) {
-        //         break;
-        //     }
-        // }
     }
 }
