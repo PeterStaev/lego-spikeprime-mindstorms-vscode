@@ -133,7 +133,7 @@
     "update-serialport": "npx npm-check-updates --upgrade --filter \"/.*serialport.*/\"",
     "test-compile": "tsc -p ./",
     "watch-web": "webpack --mode development --watch",
-    "open-in-browser": "vscode-test-web --open-devtools --extensionDevelopmentPath=. ."
+    "open-in-browser": "vscode-test-web --open-devtools --extensionDevelopmentPath=."
   },
   "devDependencies": {
     "@eslint/compat": "^1.2.9",
@@ -153,6 +153,7 @@
     "copy-webpack-plugin": "^13.0.0",
     "eslint": "^9.26.0",
     "eslint-plugin-import": "^2.31.0",
+    "eslint-plugin-import-newlines": "^1.4.0",
     "eslint-plugin-prefer-arrow": "^1.2.3",
     "eslint-plugin-simple-import-sort": "^12.1.1",
     "glob": "^11.0.2",

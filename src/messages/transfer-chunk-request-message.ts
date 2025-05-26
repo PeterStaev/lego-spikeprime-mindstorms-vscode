@@ -11,13 +11,14 @@ export class TransferChunkRequestMessage extends BaseMessage {
     }
 
     public serialize(): Uint8Array {
-        const buffer = Buffer.alloc(1 + 4 + 2 + this.payload.length);
+        const result = new Uint8Array(1 + 4 + 2 + this.payload.length);
+        const view = new DataView(result.buffer);
 
-        buffer.writeUInt8(TransferChunkRequestMessage.Id, 0);
-        buffer.writeInt32LE(this.runningCrc, 1);
-        buffer.writeUInt16LE(this.payload.length, 5);
-        Buffer.from(this.payload).copy(buffer, 7);
+        view.setUint8(0, TransferChunkRequestMessage.Id);
+        view.setInt32(1, this.runningCrc, true);
+        view.setUint16(5, this.payload.length, true);
+        result.set(this.payload, 7);
 
-        return buffer;
+        return result;
     }
 }

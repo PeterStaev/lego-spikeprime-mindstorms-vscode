@@ -79,7 +79,7 @@ export abstract class BaseClient {
         }
     }
 
-    protected abstract writeData(data: Buffer): Promise<void> | undefined;
+    protected abstract writeData(data: Uint8Array): Promise<void> | undefined;
 
     protected async sendMessage<T extends BaseMessage, U extends BaseMessage>(message: T, result: typeof BaseMessage): Promise<U> {
         const payload = pack(message.serialize());
@@ -90,13 +90,13 @@ export abstract class BaseClient {
         // Split data in chunks based on maxPacketSize. If none, assume it is small enough to send in one go.
         const packetSize = this._infoResponse?.maxPacketSize ?? payload.length;
         for (let loop = 0; loop < payload.length; loop += packetSize) {
-            await this.writeData(Buffer.from(payload.slice(loop, loop + packetSize)));
+            await this.writeData(payload.slice(loop, loop + packetSize));
         }
 
         return resultPromise as Promise<U>;
     }
 
-    protected onData(data: Buffer) {
+    protected onData(data: Uint8Array) {
         try {
             const unpacked = unpack(data);
             const [messageId, resultMessage] = deserializeMessage(unpacked);

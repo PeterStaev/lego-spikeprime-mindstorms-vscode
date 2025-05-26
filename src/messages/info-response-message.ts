@@ -15,17 +15,17 @@ export class InfoResponseMessage extends BaseMessage {
     public productGroupDevice: number | undefined;
 
     public deserialize(data: Uint8Array) {
-        const buffer = Buffer.from(data);
+        const view = new DataView(data.buffer);
 
-        this.rpcMajor = buffer.readUInt8(1);
-        this.rpcMinor = buffer.readUInt8(2);
-        this.rpcBuild = buffer.readUInt16LE(3);
-        this.firmwareMajor = buffer.readUInt8(5);
-        this.firmwareMinor = buffer.readUInt8(6);
-        this.firmwareBuild = buffer.readUInt16LE(7);
-        this.maxPacketSize = buffer.readUInt16LE(9);
-        this.maxMessageSize = buffer.readUInt16LE(11);
-        this.maxChunkSize = buffer.readUInt16LE(13);
-        this.productGroupDevice = buffer.readUInt16LE(15);
+        this.rpcMajor = view.getUint8(1);
+        this.rpcMinor = view.getUint8(2);
+        this.rpcBuild = view.getUint16(3, true);
+        this.firmwareMajor = view.getUint8(5);
+        this.firmwareMinor = view.getUint8(6);
+        this.firmwareBuild = view.getUint16(7, true);
+        this.maxPacketSize = view.getUint16(9, true);
+        this.maxMessageSize = view.getUint16(11, true);
+        this.maxChunkSize = view.getUint16(13, true);
+        this.productGroupDevice = view.getUint16(15, true);
     }
 }

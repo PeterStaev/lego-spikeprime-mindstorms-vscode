@@ -12,19 +12,20 @@ export class StartFileUploadRequestMessage extends BaseMessage {
     }
 
     public serialize(): Uint8Array {
-        const encodedFileName = Buffer.from(this.fileName, "utf8");
+        const encodedFileName = new TextEncoder().encode(this.fileName);
 
         if (encodedFileName.length > 31) {
             throw new Error("File name is too long");
         }
 
-        const buffer = Buffer.alloc(1 + (encodedFileName.length + 1) + 1 + 4);
-        buffer.writeUInt8(StartFileUploadRequestMessage.Id, 0);
-        encodedFileName.copy(buffer, 1);
+        const result = new Uint8Array(1 + (encodedFileName.length + 1) + 1 + 4);
+        const view = new DataView(result.buffer);
+        view.setUint8(0, StartFileUploadRequestMessage.Id);
+        result.set(encodedFileName, 1);
         // One 0x00 byte to terminate the string
-        buffer.writeUInt8(this.slot, encodedFileName.length + 2);
-        buffer.writeInt32LE(this.crc, encodedFileName.length + 3);
+        view.setUint8(encodedFileName.length + 2, this.slot);
+        view.setInt32(encodedFileName.length + 3, this.crc, true);
 
-        return buffer;
+        return result;
     }
 }

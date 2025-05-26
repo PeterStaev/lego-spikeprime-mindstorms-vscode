@@ -12,8 +12,8 @@
         "rootDir": "src",
         "strict": true,
         "skipLibCheck": true,
-        // "noImplicitReturns": true,
-        // "noFallthroughCasesInSwitch": true,
+        "noImplicitReturns": true,
+        "noFallthroughCasesInSwitch": true,
         /* Additional Checks */
         // "noUnusedParameters": true,  /* Report errors on unused parameters. */
     },

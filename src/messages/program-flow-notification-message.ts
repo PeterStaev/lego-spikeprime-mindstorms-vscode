@@ -6,8 +6,8 @@ export class ProgramFlowNotificationMessage extends BaseMessage {
     public isStopIn: boolean | undefined;
 
     public deserialize(data: Uint8Array): void {
-        const buffer = Buffer.from(data);
+        const view = new DataView(data.buffer);
 
-        this.isStopIn = !!buffer.readUInt8(1);
+        this.isStopIn = !!view.getUint8(1);
     }
 }

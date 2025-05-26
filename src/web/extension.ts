@@ -1,53 +1,105 @@
 
 import * as vscode from "vscode";
 
-// this method is called when your extension is activated
-// your extension is activated the very first time the command is executed
+import {
+    getClient,
+    getProgramInfo,
+    initClient,
+    initHubStatusBarItems,
+    onDeactivate,
+    onHubConnected,
+    registerSharedCommands,
+    startProgramInSlot,
+    uploadProgramToHub,
+} from "../shared-extension";
+import { Command } from "../utils";
+import { WebUsbClient } from "./clients/web-usb-client";
+
+
+
 export async function activate(context: vscode.ExtensionContext) {
+    initHubStatusBarItems(context);
 
-    // Use the console to output diagnostic information (console.log) and errors (console.error)
-    // This line of code will only be executed once when your extension is activated
-    console.log("Congratulations, your extension \"helloworld-web-sample\" is now active in the web extension host!");
+    registerSharedCommands(context);
 
-    // The command has been defined in the package.json file
-    // Now provide the implementation of the command with registerCommand
-    // The commandId parameter must match the command field in package.json
-    const disposable = vscode.commands.registerCommand("lego-spikeprime-mindstorms-vscode.connectToHub", async () => {
-        await vscode.commands.executeCommand("workbench.experimental.requestSerialPort");
-        const devices = await navigator.serial.getPorts();
-        console.log(devices);
+    const connectToHubCommand = vscode.commands.registerCommand(Command.ConnectToHub, async () => {
+        try {
+            initClient(WebUsbClient);
 
-        // (navigator as any).bluetooth.requestDevice({ filters: [{ services: ["battery_service"] }] });
-        // The code you place here will be executed every time your command is executed
-        // await vscode.commands.executeCommand("workbench.experimental.requestSerialPort");
+            await vscode.window.withProgress(
+                {
+                    location: vscode.ProgressLocation.Notification,
+                    title: "Connecting to Hub...",
+                },
+                () => getClient()!.connect(""),
+            );
 
-        // const test = await navigator.serial.getPorts();
-        // const port = test[0];
-        // await port.open({ baudRate: 115200 });
-        // const info = await port.getInfo();
-        // while (port.readable) {
-        //     const reader = port.readable.getReader();
-        //     try {
-        //         // eslint-disable-next-line no-constant-condition
-        //         while (true) {
-        //             const { done, value } = await reader.read();
-        //             if (done) {
-        //                 break;
-        //             }
-        //             console.log(value);
-        //         }
-        //     }
-        //     finally {
-        //         reader.releaseLock();
-        //     }
-        // }
-        // console.log(test);
-        // Display a message box to the user
-        vscode.window.showInformationMessage("Hello World from helloworld-web-sample in a web extension host 153!");
+            await onHubConnected();
+        }
+        catch (e) {
+            console.error(e);
+            vscode.window.showErrorMessage("Connecting to Hub Failed!" + (e instanceof Error ? ` ${e.message}` : ""));
+        }
     });
 
-    context.subscriptions.push(disposable);
+    const uploadProgramCommand = vscode.commands.registerCommand("lego-spikeprime-mindstorms-vscode.uploadProgram", async () => {
+        if (!getClient()?.isConnectedIn) {
+            vscode.window.showErrorMessage("LEGO Hub not connected! Please connect first!");
+            return;
+        }
+
+        try {
+            const programInfo = await getProgramInfo();
+            if (!programInfo) {
+                return;
+            }
+
+
+            await vscode.window.withProgress(
+                {
+                    location: vscode.ProgressLocation.Notification,
+                    title: `Uploading Program to Hub (Slot #${programInfo.slotId})...`,
+                },
+                (progress) => performUploadProgram(programInfo.slotId, progress),
+            );
+
+            vscode.window.showInformationMessage("Program uploaded!");
+
+            if (programInfo.isAutostartIn) {
+                setTimeout(() => {
+                    void startProgramInSlot(programInfo.slotId);
+                }, 250);
+            }
+        }
+        catch (e) {
+            console.error(e);
+            vscode.window.showErrorMessage("Program Upload Failed!" + (e instanceof Error ? ` ${e.message}` : ""));
+        }
+    });
+    context.subscriptions.push(
+        connectToHubCommand,
+        uploadProgramCommand,
+    );
 }
 
 // this method is called when your extension is deactivated
-export function deactivate() { }
+export async function deactivate() {
+    await onDeactivate();
+}
+
+async function performUploadProgram(slotId: number, progress?: vscode.Progress<{ increment: number }>) {
+    const editor = vscode.window.activeTextEditor;
+    if (!editor) {
+        vscode.window.showInformationMessage("Please open a file");
+        return;
+    }
+
+    const document = editor.document;
+    const data = new TextEncoder().encode(document.getText());
+    await uploadProgramToHub(
+        data,
+        slotId,
+        false,
+        progress,
+    );
+}
