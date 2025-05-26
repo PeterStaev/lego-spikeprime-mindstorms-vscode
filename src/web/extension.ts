@@ -1,8 +1,11 @@
 
+import * as mpy from "@pybricks/mpy-cross-v6";
+
 import * as vscode from "vscode";
 
 import {
     getClient,
+    getLogger,
     getProgramInfo,
     initClient,
     initHubStatusBarItems,
@@ -15,9 +18,11 @@ import {
 import { Command } from "../utils";
 import { WebUsbClient } from "./clients/web-usb-client";
 
-
+let wasmUri: vscode.Uri;
 
 export async function activate(context: vscode.ExtensionContext) {
+    wasmUri = vscode.Uri.joinPath(context.extensionUri, "dist/mpy-cross-v6.wasm");
+
     initHubStatusBarItems(context);
 
     registerSharedCommands(context);
@@ -42,7 +47,7 @@ export async function activate(context: vscode.ExtensionContext) {
         }
     });
 
-    const uploadProgramCommand = vscode.commands.registerCommand("lego-spikeprime-mindstorms-vscode.uploadProgram", async () => {
+    const uploadProgramCommand = vscode.commands.registerCommand(Command.UploadProgram, async () => {
         if (!getClient()?.isConnectedIn) {
             vscode.window.showErrorMessage("LEGO Hub not connected! Please connect first!");
             return;
@@ -89,17 +94,38 @@ export async function deactivate() {
 
 async function performUploadProgram(slotId: number, progress?: vscode.Progress<{ increment: number }>) {
     const editor = vscode.window.activeTextEditor;
+    const config = vscode.workspace.getConfiguration();
+    const logger = getLogger();
+
     if (!editor) {
         vscode.window.showInformationMessage("Please open a file");
         return;
     }
 
     const document = editor.document;
-    const data = new TextEncoder().encode(document.getText());
+    const documentContent = document.getText();
+
+    let compileResult: mpy.CompileResult | undefined;
+    if (config.get("legoSpikePrimeMindstorms.compileBeforeUpload")) {
+        compileResult = await mpy.compile(
+            document.fileName,
+            documentContent,
+            [],
+            wasmUri.toString(),
+        );
+
+        if (compileResult?.status !== 0) {
+            logger?.error(compileResult.err.join("\r\n"));
+            logger?.error("\r\n");
+            throw new Error("Compilation Failed!");
+        }
+    }
+
+    const data = compileResult?.mpy ?? new TextEncoder().encode(documentContent);
     await uploadProgramToHub(
         data,
         slotId,
-        false,
+        !!compileResult?.mpy,
         progress,
     );
 }

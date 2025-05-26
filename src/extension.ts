@@ -87,7 +87,7 @@ export function activate(context: vscode.ExtensionContext) {
         }
     });
 
-    const uploadProgramCommand = vscode.commands.registerCommand("lego-spikeprime-mindstorms-vscode.uploadProgram", async () => {
+    const uploadProgramCommand = vscode.commands.registerCommand(Command.UploadProgram, async () => {
         if (!getClient()?.isConnectedIn) {
             vscode.window.showErrorMessage("LEGO Hub not connected! Please connect first!");
             return;
