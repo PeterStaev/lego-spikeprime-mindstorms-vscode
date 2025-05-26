@@ -2,7 +2,10 @@ export class MessageTransformer {
     private _buffer = Uint8Array.from([]);
 
     public transform(chunk: Uint8Array, controller: TransformStreamDefaultController<Uint8Array>) {
-        this._buffer = new Uint8Array([...this._buffer, ...chunk]);
+        const newBuffer = new Uint8Array(this._buffer.length + chunk.length);
+        newBuffer.set(this._buffer);
+        newBuffer.set(chunk, this._buffer.length);
+        this._buffer = newBuffer;
 
         let messageEndIndex = this._buffer.findIndex((byte) => byte === 0x02);
         while (messageEndIndex !== -1) {
