@@ -4,8 +4,8 @@ export class StatusResponseMessage extends BaseMessage {
     public IsAckIn: boolean | undefined;
 
     public deserialize(data: Uint8Array): void {
-        const buffer = Buffer.from(data);
+        const view = new DataView(data.buffer);
 
-        this.IsAckIn = (buffer.readUInt8(1) === 0x00);
+        this.IsAckIn = (view.getUint8(1) === 0x00);
     }
 }

@@ -6,12 +6,10 @@ export class ConsoleNotificationMessage extends BaseMessage {
     public message: string | undefined;
 
     public deserialize(data: Uint8Array): void {
-        const buffer = Buffer.from(data);
-
         // Remove the first byte which is the message ID and any trailing null bytes
-        const messageEnd = buffer.indexOf(0, 1);
-        const messageLength = messageEnd === -1 ? buffer.length : messageEnd;
+        const messageEnd = data.indexOf(0, 1);
+        const messageLength = messageEnd === -1 ? data.length : messageEnd;
 
-        this.message = buffer.slice(1, messageLength).toString("utf8");
+        this.message = new TextDecoder().decode(data.slice(1, messageLength));
     }
 }

@@ -10,6 +10,7 @@ import { defineConfig, globalIgnores } from "eslint/config";
 import _import from "eslint-plugin-import";
 import preferArrow from "eslint-plugin-prefer-arrow";
 import simpleImportSort from "eslint-plugin-simple-import-sort";
+import importNewLines from "eslint-plugin-import-newlines";
 import globals from "globals";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -33,6 +34,7 @@ export default defineConfig([globalIgnores(["**/*.d.ts"]), {
         import: fixupPluginRules(_import),
         "prefer-arrow": preferArrow,
         "simple-import-sort": simpleImportSort,
+        "import-newlines": importNewLines,
         "@typescript-eslint": typescriptEslint,
         "@stylistic/ts": stylisticTs,
     },
@@ -52,6 +54,7 @@ export default defineConfig([globalIgnores(["**/*.d.ts"]), {
     },
 
     rules: {
+        "no-undef": "off",
         "@typescript-eslint/adjacent-overload-signatures": "error",
 
         "@typescript-eslint/array-type": ["error", {
@@ -169,6 +172,12 @@ export default defineConfig([globalIgnores(["**/*.d.ts"]), {
 
         "id-match": "error",
         "import/no-extraneous-dependencies": "error",
+        "import-newlines/enforce": [
+            "error",
+            {
+                "items": 2
+            }
+        ],
         "max-len": "off",
         "new-parens": "error",
         "no-bitwise": "error",

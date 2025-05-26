@@ -2,6 +2,11 @@ import CRC32 = require("crc-32");
 
 const CRC32_ALIGNMENT = 4;
 
+export const enum Command {
+    ConnectToHub = "lego-spikeprime-mindstorms-vscode.connectToHub",
+    DisconnectFromHub = "lego-spikeprime-mindstorms-vscode.disconnectFromHub",
+    UploadProgram = "lego-spikeprime-mindstorms-vscode.uploadProgram",
+}
 
 export function setTimeoutAsync(callback: () => void, delay: number) {
     return new Promise<void>((resolve) => {

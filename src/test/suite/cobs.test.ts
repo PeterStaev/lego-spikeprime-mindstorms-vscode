@@ -1,9 +1,13 @@
-/* eslint-disable no-undef */
 import * as assert from "assert";
 import { TextEncoder } from "util";
 import * as vscode from "vscode";
 
-import { decode, encode, pack, unpack } from "../../cobs";
+import {
+    decode,
+    encode,
+    pack,
+    unpack,
+} from "../../cobs";
 
 const TEST_CASES: Array<[Uint8Array, Uint8Array]> = [
     [

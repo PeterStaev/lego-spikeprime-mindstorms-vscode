@@ -3,7 +3,7 @@
   "displayName": "LEGO SPIKE Prime / MINDSTORMS Robot Inventor Extension",
   "description": "Helps you connect Lego's SPIKE Prime/MINDSTORMS Robot Inventor",
   "publisher": "PeterStaev",
-  "version": "2.1.1",
+  "version": "3.0.0",
   "engines": {
     "vscode": "^1.66.0"
   },
@@ -14,6 +14,7 @@
     "onStartupFinished"
   ],
   "main": "./dist/extension",
+  "browser": "./dist/web/extension.js",
   "contributes": {
     "configuration": [
       {
@@ -130,24 +131,30 @@
     "test": "node ./out/test/runTest.js",
     "update-eslint": "npx npm-check-updates --upgrade --filter \"/.*eslint.*/\"",
     "update-serialport": "npx npm-check-updates --upgrade --filter \"/.*serialport.*/\"",
-    "test-compile": "tsc -p ./"
+    "test-compile": "tsc -p ./",
+    "watch-web": "webpack --mode development --watch",
+    "open-in-browser": "vscode-test-web --open-devtools --extensionDevelopmentPath=."
   },
   "devDependencies": {
     "@eslint/compat": "^1.2.9",
     "@eslint/eslintrc": "^3.3.1",
     "@eslint/js": "^9.26.0",
     "@stylistic/eslint-plugin-ts": "^4.2.0",
+    "@types/dom-serial": "^1.0.6",
     "@types/glob": "^8.1.0",
     "@types/mocha": "^9.1.0",
     "@types/node": "^22.8.2",
     "@types/shell-quote": "^1.7.5",
     "@types/vscode": "^1.55.0",
+    "@types/web-bluetooth": "^0.0.21",
     "@typescript-eslint/eslint-plugin": "^8.32.0",
     "@typescript-eslint/parser": "^8.32.0",
     "@vscode/test-electron": "^2.5.2",
+    "@vscode/test-web": "^0.0.69",
     "copy-webpack-plugin": "^13.0.0",
     "eslint": "^9.26.0",
     "eslint-plugin-import": "^2.31.0",
+    "eslint-plugin-import-newlines": "^1.4.0",
     "eslint-plugin-prefer-arrow": "^1.2.3",
     "eslint-plugin-simple-import-sort": "^12.1.1",
     "glob": "^11.0.2",
@@ -165,6 +172,8 @@
     "@pybricks/mpy-cross-v6": "^2.0.0",
     "@serialport/parser-readline": "^12.0.0",
     "crc-32": "^1.2.2",
+    "path-browserify": "^1.0.1",
+    "process": "^0.11.10",
     "serialport": "^12.0.0",
     "shell-quote": "^1.8.2",
     "uuid": "^11.1.0"
