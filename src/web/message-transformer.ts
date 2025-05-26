@@ -18,5 +18,6 @@ export class MessageTransformer {
 
     public flush(controller: TransformStreamDefaultController<Uint8Array>) {
         controller.enqueue(this._buffer);
+        this._buffer = new Uint8Array(0);
     }
 }
