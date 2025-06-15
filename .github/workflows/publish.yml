@@ -26,7 +26,12 @@ jobs:
       - run: npm install
       - name: 'Package for linux'
         if: matrix.platform == 'linux'
-        run: npx vsce package --target linux-x64, linux-arm64, linux-armhf, alpine-x64, alpine-arm64
+        run: |
+          npx vsce package --target linux-x64
+          npx vsce package --target linux-arm64
+          npx vsce package --target linux-armhf
+          npx vsce package --target alpine-x64
+          npx vsce package --target alpine-arm64
       - name: 'Package for all'
         if: matrix.platform == 'all'
         run: npx vsce package
