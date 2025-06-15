@@ -2,8 +2,6 @@ name: Publish
 
 on:
   push:
-    branches:
-      - "**"
     tags:
       - "v*"
 
@@ -27,14 +25,14 @@ jobs:
       - name: 'Package for linux'
         if: matrix.platform == 'linux'
         run: |
-          npx vsce package --target linux-x64
-          npx vsce package --target linux-arm64
-          npx vsce package --target linux-armhf
-          npx vsce package --target alpine-x64
-          npx vsce package --target alpine-arm64
+          npx @vscode/vsce package --target linux-x64
+          npx @vscode/vsce package --target linux-arm64
+          npx @vscode/vsce package --target linux-armhf
+          npx @vscode/vsce package --target alpine-x64
+          npx @vscode/vsce package --target alpine-arm64
       - name: 'Package for all'
         if: matrix.platform == 'all'
-        run: npx vsce package
+        run: npx @vscode/vsce package
       - uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.platform }}
@@ -46,6 +44,6 @@ jobs:
     if: success() && startsWith( github.ref, 'refs/tags/')
     steps:
       - uses: actions/download-artifact@v4
-      - run: npx vsce publish --packagePath $(find . -iname *.vsix)
+      - run: npx @vscode/vsce publish --packagePath $(find . -iname *.vsix)
         env:
           VSCE_PAT: ${{ secrets.VSCE_PAT }}
