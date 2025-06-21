@@ -1,4 +1,8 @@
-import * as noble from "@abandonware/noble";
+import {
+    Characteristic,
+    Peripheral,
+    withBindings,
+} from "@stoprocent/noble";
 
 import * as vscode from "vscode";
 
@@ -6,6 +10,9 @@ import { InfoRequestMessage } from "../messages/info-request-message";
 import { InfoResponseMessage } from "../messages/info-response-message";
 import { setTimeoutAsync } from "../utils";
 import { BaseClient } from "./base-client";
+
+// Auto-select based on platform
+const noble = withBindings("default"); // 'hci', 'win', 'mac'
 
 const SERVICE_UUID = "0000FD02-0000-1000-8000-00805F9B34FB";
 
@@ -18,9 +25,9 @@ export class BleClient extends BaseClient {
         return !!this._peripheral;
     }
 
-    private _peripheral: noble.Peripheral | undefined;
-    private _rxCharacteristic: noble.Characteristic | undefined;
-    private _txCharacteristic: noble.Characteristic | undefined;
+    private _peripheral: Peripheral | undefined;
+    private _rxCharacteristic: Characteristic | undefined;
+    private _txCharacteristic: Characteristic | undefined;
 
     public async list() {
         const result: vscode.QuickPickItem[] = [];
@@ -28,9 +35,11 @@ export class BleClient extends BaseClient {
         noble.on("discover", async (peripheral) => {
             result.push({
                 label: peripheral.advertisement.localName,
-                description: peripheral.uuid,
+                description: peripheral.id,
             });
         });
+
+        await noble.waitForPoweredOnAsync();
         await noble.startScanningAsync([SERVICE_UUID]);
 
         await setTimeoutAsync(() => {
@@ -42,57 +51,27 @@ export class BleClient extends BaseClient {
     }
 
     public async connect(peripheralUuid: string) {
-        return new Promise<void>((resolve, reject) => {
-            noble.on("discover", async (peripheral) => {
-                try {
-                    if (peripheral.uuid !== peripheralUuid) {
-                        return;
-                    }
-                    await noble.stopScanningAsync();
-                    noble.removeAllListeners("discover");
+        this._peripheral = await noble.connectAsync(peripheralUuid);
+        this._peripheral.on("disconnect", this.onDisconnect.bind(this));
 
-                    this._peripheral = peripheral;
-                    this._peripheral.on("disconnect", this.onDisconnect.bind(this));
+        const { characteristics } = await this._peripheral.discoverSomeServicesAndCharacteristicsAsync(
+            [SERVICE_UUID],
+            [RX_CHAR_UUID, TX_CHAR_UUID],
+        );
 
-                    await this._peripheral.connectAsync();
+        if (characteristics.length !== 2) {
+            await this._peripheral.disconnectAsync();
+            throw new Error("Invalid number of characteristics");
+        }
 
-                    const { characteristics } = await this._peripheral.discoverSomeServicesAndCharacteristicsAsync(
-                        [SERVICE_UUID],
-                        [RX_CHAR_UUID, TX_CHAR_UUID],
-                    );
+        this._txCharacteristic = characteristics[0];
+        this._rxCharacteristic = characteristics[1];
 
-                    if (characteristics.length !== 2) {
-                        await this._peripheral.disconnectAsync();
-                        reject(new Error("Invalid number of characteristics"));
-                        return;
-                    }
+        this._rxCharacteristic.subscribe();
+        this._rxCharacteristic.on("data", this.onData.bind(this));
 
-                    this._txCharacteristic = characteristics[0];
-                    this._rxCharacteristic = characteristics[1];
-
-                    this._rxCharacteristic.subscribe();
-                    this._rxCharacteristic.on("data", this.onData.bind(this));
-
-                    await setTimeoutAsync(() => { /* noop */ }, 250); // HACK: This seems to be needed on Windows to wait for the BLE stack to be ready
-                    this._infoResponse = await this.sendMessage<InfoRequestMessage, InfoResponseMessage>(new InfoRequestMessage(), InfoResponseMessage);
-
-                    resolve();
-                }
-                catch (e) {
-                    reject(e);
-                }
-            });
-
-            void noble.startScanningAsync([SERVICE_UUID]);
-
-            setTimeout(async () => {
-                if (!this._peripheral) {
-                    await noble.stopScanningAsync();
-                    reject(new Error("Hub connection timed out"));
-                }
-            }, (vscode.workspace.getConfiguration().get<number>("legoSpikePrimeMindstorms.bleConnectionTimeoutSeconds") || 5) * 1000);
-        });
-
+        await setTimeoutAsync(() => { /* noop */ }, 250); // HACK: This seems to be needed on Windows to wait for the BLE stack to be ready
+        this._infoResponse = await this.sendMessage<InfoRequestMessage, InfoResponseMessage>(new InfoRequestMessage(), InfoResponseMessage);
     }
 
     public async disconnect() {

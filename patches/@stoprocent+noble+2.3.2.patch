@@ -1,0 +1,24 @@
+diff --git a/node_modules/@stoprocent/noble/lib/mac/bindings.js b/node_modules/@stoprocent/noble/lib/mac/bindings.js
+index dcfdcf1..24fc848 100644
+--- a/node_modules/@stoprocent/noble/lib/mac/bindings.js
++++ b/node_modules/@stoprocent/noble/lib/mac/bindings.js
+@@ -1,6 +1,6 @@
+ const { EventEmitter } = require('events');
+ const { resolve } = require('path');
+-const dir = resolve(__dirname, '..', '..');
++const dir = resolve(__dirname, '..');
+ const binding = require('node-gyp-build')(dir);
+ const { NobleMac } = binding;
+ 
+diff --git a/node_modules/@stoprocent/noble/lib/win/bindings.js b/node_modules/@stoprocent/noble/lib/win/bindings.js
+index 32157e6..a760fef 100644
+--- a/node_modules/@stoprocent/noble/lib/win/bindings.js
++++ b/node_modules/@stoprocent/noble/lib/win/bindings.js
+@@ -1,6 +1,6 @@
+ const { EventEmitter } = require('events');
+ const { resolve } = require('path');
+-const dir = resolve(__dirname, '..', '..');
++const dir = resolve(__dirname, '..');
+ const binding = require('node-gyp-build')(dir);
+ const { NobleWinrt } = binding;
+ 

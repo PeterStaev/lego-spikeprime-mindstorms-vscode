@@ -1,5 +1,9 @@
 # Change Log
 
+## 3.1.0 - 2025-06-22
+
+- Migrate to a different BLE package for better support.
+
 ## 3.0.0 - 2025-05-28
 
 - Add support to use the extension as web extension. Currently supporting only connection through USB!
