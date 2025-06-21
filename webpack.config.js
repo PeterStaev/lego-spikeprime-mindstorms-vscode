@@ -5,6 +5,7 @@
 const path = require("path");
 const CopyWebpackPlugin = require("copy-webpack-plugin");
 const webpack = require("webpack");
+const { platform } = require("node:process");
 
 /** @type {import('webpack').Configuration}*/
 const config = {
@@ -26,6 +27,7 @@ const config = {
             vscode: "commonjs vscode", // the vscode-module is created on-the-fly and must be excluded. Add other modules that cannot be webpack'ed, 📖 -> https://webpack.js.org/configuration/externals/
         },
         "ws",
+        ...(platform === "win32" ? ["@stoprocent/bluetooth-hci-socket"] : []),
     ],
     resolve: {
         // support reading TypeScript and JavaScript files, 📖 -> https://github.com/TypeStrong/ts-loader
