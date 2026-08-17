@@ -70,6 +70,43 @@ export function registerSharedCommands(context: vscode.ExtensionContext): void {
         );
     });
 
+    const setHubNameCommand = vscode.commands.registerCommand(Command.SetHubName, async () => {
+        if (!client?.isConnectedIn) {
+            vscode.window.showErrorMessage("LEGO Hub not connected! Please connect first!");
+            return;
+        }
+
+        const name = await vscode.window.showInputBox({
+            prompt: "Enter a new hub name",
+            validateInput: validateHubName,
+        });
+        if (name === undefined) {
+            return;
+        }
+
+        try {
+            const success = await vscode.window.withProgress(
+                {
+                    location: vscode.ProgressLocation.Notification,
+                    title: "Setting LEGO Hub Name...",
+                },
+                () => client!.setHubName(name),
+            );
+
+            if (!success) {
+                vscode.window.showErrorMessage("Setting hub name not acknowledged by hub!");
+                return;
+            }
+
+            await updateHubStatusBarItem();
+            vscode.window.showInformationMessage(`LEGO Hub renamed to "${name}".`);
+        }
+        catch (e) {
+            console.error(e);
+            vscode.window.showErrorMessage("Setting Hub Name Failed!" + (e instanceof Error ? ` ${e.message}` : ""));
+        }
+    });
+
     const startProgramCommand = vscode.commands.registerCommand("lego-spikeprime-mindstorms-vscode.startProgram", async () => {
         if (!client?.isConnectedIn) {
             vscode.window.showErrorMessage("LEGO Hub not connected! Please connect first!");
@@ -151,11 +188,24 @@ export function registerSharedCommands(context: vscode.ExtensionContext): void {
 
     context.subscriptions.push(
         disconnectFromHubCommand,
+        setHubNameCommand,
         startProgramCommand,
         terminateProgramCommand,
         showTerminalCommand,
         addFileHeaderCommand,
     );
+}
+
+function validateHubName(name: string): string | undefined {
+    if (!name) {
+        return "Hub name cannot be empty";
+    }
+
+    if (new TextEncoder().encode(name).length > 29) {
+        return "Hub name must be 29 UTF-8 bytes or fewer";
+    }
+
+    return undefined;
 }
 
 export function initHubStatusBarItems(context: vscode.ExtensionContext) {
@@ -211,6 +261,13 @@ export async function getProgramInfo(): Promise<{ slotId: number, isAutostartIn:
 }
 
 export async function onHubConnected() {
+    try {
+        await client?.loadHubName();
+    }
+    catch (e) {
+        logger.error("Unable to read hub name: " + (e instanceof Error ? e.message : e));
+    }
+
     await updateHubStatusBarItem();
     showTerminal();
 }
@@ -352,7 +409,8 @@ async function terminateCurrentProgram() {
 
 async function updateHubStatusBarItem() {
     if (client?.isConnectedIn) {
-        hubStatusBarItem.text = `$(repl) LEGO Hub: Connected (${client.firmwareVersion} / ${client.rpcVersion})`;
+        const hubName = client.hubName ? ` ${client.hubName}` : "";
+        hubStatusBarItem.text = `$(repl) LEGO Hub:${hubName} Connected (${client.firmwareVersion} / ${client.rpcVersion})`;
         hubStatusBarItem.command = Command.DisconnectFromHub;
     }
     else {

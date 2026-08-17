@@ -1,6 +1,6 @@
 import * as vscode from "vscode";
 
-import { BaseClient } from "../../clients/base-client";
+import { BaseClient, HubQuickPickItem } from "../../clients/base-client";
 import { InfoRequestMessage } from "../../messages/info-request-message";
 import { InfoResponseMessage } from "../../messages/info-response-message";
 import { getLogger } from "../../shared-extension";
@@ -18,7 +18,10 @@ export class WebUsbClient extends BaseClient {
         return this._port?.readable !== undefined && this._port?.writable !== undefined;
     }
 
-    public list(): Promise<vscode.QuickPickItem[]> {
+    public list(
+        _onDidChange: (items: readonly HubQuickPickItem[]) => void,
+        _cancellationToken: vscode.CancellationToken,
+    ): Promise<HubQuickPickItem[]> {
         throw new Error("Method not implemented.");
     }
 

@@ -97,5 +97,5 @@ Settings in `package.json` `contributes.configuration`:
 
 - `compileBeforeUpload`: Enable Python→MPY compilation
 - `customPrepocessorPath`: External preprocessor script path
-- `bleConnectionTimeoutSeconds`: Bluetooth scanning timeout
+- Bluetooth discovery continues until the hub picker is dismissed or a hub is selected
 - `saveFileToUpload`: Persist assembled files for debugging

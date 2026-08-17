@@ -1,9 +1,8 @@
 import { DelimiterParser, SerialPort } from "serialport";
-import * as vscode from "vscode";
 
 import { InfoRequestMessage } from "../messages/info-request-message";
 import { InfoResponseMessage } from "../messages/info-response-message";
-import { BaseClient } from "./base-client";
+import { BaseClient, HubQuickPickItem } from "./base-client";
 
 const VENDOR_ID = "0694";
 const PRODUCT_ID = "0009";
@@ -25,8 +24,9 @@ export class UsbClient extends BaseClient {
                 return {
                     label: port.path,
                     description: port.serialNumber,
+                    connectionId: port.serialNumber!,
                 };
-            }) satisfies vscode.QuickPickItem[];
+            }) satisfies HubQuickPickItem[];
     }
 
     public async connect(peripheralUuid: string) {
