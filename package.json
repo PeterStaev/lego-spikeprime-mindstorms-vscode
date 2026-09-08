@@ -11,7 +11,8 @@
     "Other"
   ],
   "activationEvents": [
-    "onStartupFinished"
+    "onStartupFinished",
+    "onView:legoLiveView"
   ],
   "main": "./dist/extension",
   "browser": "./dist/web/extension.js",
@@ -39,6 +40,13 @@
             "type": "string",
             "default": "",
             "description": "Path to a custom preprocessor script/executable that will be run before uploading the program to the LEGO hub. The file contents will be sent as stdin and it must output the resulting file contents to stdout. Any non-zero exit result will be considered an error and execution will not continue."
+          },
+          "legoSpikePrimeMindstorms.telemetryInterval": {
+            "type": "number",
+            "default": 100,
+            "minimum": 20,
+            "maximum": 2000,
+            "description": "Interval (ms) for live device telemetry updates"
           }
         }
       }
@@ -76,6 +84,11 @@
         "command": "lego-spikeprime-mindstorms-vscode.addFileHeader",
         "title": "LEGO Hub: Add File Header",
         "icon": "$(note)"
+      },
+      {
+        "command": "lego-spikeprime-mindstorms-vscode.showLiveTelemetry",
+        "title": "LEGO Hub: Show Live Telemetry",
+        "icon": "$(eye)"
       }
     ],
     "menus": {
@@ -104,6 +117,25 @@
           "command": "lego-spikeprime-mindstorms-vscode.addFileHeader",
           "group": "navigation@5",
           "when": "editorLangId == python"
+        }
+      ]
+    },
+    "viewsContainers": {
+      "panel": [
+        {
+          "id": "legoHubPanel",
+          "title": "LEGO Hub",
+          "icon": "media/icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "legoHubPanel": [
+        {
+          "type": "webview",
+          "id": "legoLiveView",
+          "name": "Live Data",
+          "icon": "$(eye)"
         }
       ]
     }
@@ -151,7 +183,7 @@
     "@typescript-eslint/parser": "^8.32.0",
     "@vscode/test-electron": "^2.5.2",
     "@vscode/test-web": "^0.0.69",
-    "copy-webpack-plugin": "^13.0.0",
+    "copy-webpack-plugin": "^14.0.0",
     "eslint": "^9.26.0",
     "eslint-plugin-import": "^2.31.0",
     "eslint-plugin-import-newlines": "^1.4.0",
@@ -159,7 +191,7 @@
     "eslint-plugin-simple-import-sort": "^12.1.1",
     "glob": "^11.0.2",
     "globals": "^16.1.0",
-    "mocha": "^9.2.2",
+    "mocha": "^11.7.5",
     "ncp": "^2.0.0",
     "node-loader": "^2.1.0",
     "patch-package": "^8.0.0",

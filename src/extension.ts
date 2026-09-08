@@ -23,6 +23,7 @@ import {
     uploadProgramToHub,
 } from "./shared-extension";
 import { Command } from "./utils";
+import { LiveDataViewProvider } from "./views/live-telemetry-provider";
 
 let mpyWasm: Uint8Array | undefined;
 const supportedClients: vscode.QuickPickItem[] = [
@@ -32,7 +33,7 @@ const supportedClients: vscode.QuickPickItem[] = [
 
 const enum Client {
     Ble = "Bluetooth",
-    Usb = "USB"
+    Usb = "USB",
 }
 
 export function activate(context: vscode.ExtensionContext) {
@@ -44,87 +45,138 @@ export function activate(context: vscode.ExtensionContext) {
 
     registerSharedCommands(context);
 
-    const connectToHubCommand = vscode.commands.registerCommand(Command.ConnectToHub, async () => {
-        try {
-            const clientSelection = await vscode.window.showQuickPick(supportedClients, { canPickMany: false });
-            if (!clientSelection) {
+    const provider = new LiveDataViewProvider(getClient);
+
+    const connectToHubCommand = vscode.commands.registerCommand(
+        Command.ConnectToHub,
+        async () => {
+            try {
+                const clientSelection = await vscode.window.showQuickPick(
+                    supportedClients,
+                    { canPickMany: false },
+                );
+                if (!clientSelection) {
+                    return;
+                }
+
+                switch (clientSelection.label) {
+                    case Client.Ble:
+                        initClient(BleClient);
+                        break;
+
+                    case Client.Usb:
+                        initClient(UsbClient);
+                        break;
+
+                    default:
+                        throw new Error("Unsupported client");
+                }
+
+                const selection = await vscode.window.showQuickPick(
+                    getClient()!.list(),
+                    { canPickMany: false },
+                );
+
+                if (!selection) {
+                    return;
+                }
+
+                await vscode.window.withProgress(
+                    {
+                        location: vscode.ProgressLocation.Notification,
+                        title: "Connecting to Hub...",
+                    },
+                    () => getClient()!.connect(selection.description!),
+                );
+
+                await onHubConnected();
+
+                getClient()!.onDeviceNotification.event((msg) => {
+                    provider.updateTelemetry(msg.devices);
+                });
+
+                getClient()!.onClosed.event(() => {
+                    provider.setClientStateChanged();
+                });
+
+                await getClient()!.startDeviceNotifications();
+
+                provider.setClientStateChanged();
+            }
+            catch (e) {
+                console.error(e);
+                vscode.window.showErrorMessage(
+                    "Connecting to Hub Failed!" +
+                        (e instanceof Error ? ` ${e.message}` : ""),
+                );
+            }
+        },
+    );
+
+    const uploadProgramCommand = vscode.commands.registerCommand(
+        Command.UploadProgram,
+        async () => {
+            if (!getClient()?.isConnectedIn) {
+                vscode.window.showErrorMessage(
+                    "LEGO Hub not connected! Please connect first!",
+                );
                 return;
             }
 
-            switch (clientSelection.label) {
-                case Client.Ble:
-                    initClient(BleClient);
-                    break;
+            try {
+                const programInfo = await getProgramInfo();
+                if (!programInfo) {
+                    return;
+                }
 
-                case Client.Usb:
-                    initClient(UsbClient);
-                    break;
+                await vscode.window.withProgress(
+                    {
+                        location: vscode.ProgressLocation.Notification,
+                        title: `Uploading Program to Hub (Slot #${programInfo.slotId})...`,
+                    },
+                    (progress) =>
+                        performUploadProgram(programInfo.slotId, progress),
+                );
 
-                default:
-                    throw new Error("Unsupported client");
+                vscode.window.showInformationMessage("Program uploaded!");
 
+                if (programInfo.isAutostartIn) {
+                    setTimeout(() => {
+                        void startProgramInSlot(programInfo.slotId);
+                    }, 250);
+                }
             }
-
-            const selection = await vscode.window.showQuickPick(getClient()!.list(), { canPickMany: false });
-
-            if (!selection) {
-                return;
+            catch (e) {
+                console.error(e);
+                vscode.window.showErrorMessage(
+                    "Program Upload Failed!" +
+                        (e instanceof Error ? ` ${e.message}` : ""),
+                );
             }
+        },
+    );
 
-            await vscode.window.withProgress(
-                {
-                    location: vscode.ProgressLocation.Notification,
-                    title: "Connecting to Hub...",
-                },
-                () => getClient()!.connect(selection.description!),
-            );
+    context.subscriptions.push(
+        vscode.commands.registerCommand(
+            "lego-spikeprime-mindstorms-vscode.showLiveTelemetry",
+            async () => {
+                await vscode.commands.executeCommand(
+                    "workbench.view.extension.legoRobotPanel",
+                );
 
-            await onHubConnected();
-        }
-        catch (e) {
-            console.error(e);
-            vscode.window.showErrorMessage("Connecting to Hub Failed!" + (e instanceof Error ? ` ${e.message}` : ""));
-        }
-    });
-
-    const uploadProgramCommand = vscode.commands.registerCommand(Command.UploadProgram, async () => {
-        if (!getClient()?.isConnectedIn) {
-            vscode.window.showErrorMessage("LEGO Hub not connected! Please connect first!");
-            return;
-        }
-
-        try {
-            const programInfo = await getProgramInfo();
-            if (!programInfo) {
-                return;
-            }
-
-
-            await vscode.window.withProgress(
-                {
-                    location: vscode.ProgressLocation.Notification,
-                    title: `Uploading Program to Hub (Slot #${programInfo.slotId})...`,
-                },
-                (progress) => performUploadProgram(programInfo.slotId, progress),
-            );
-
-            vscode.window.showInformationMessage("Program uploaded!");
-
-            if (programInfo.isAutostartIn) {
-                setTimeout(() => {
-                    void startProgramInSlot(programInfo.slotId);
-                }, 250);
-            }
-        }
-        catch (e) {
-            console.error(e);
-            vscode.window.showErrorMessage("Program Upload Failed!" + (e instanceof Error ? ` ${e.message}` : ""));
-        }
-    });
+                await vscode.commands.executeCommand("legoLiveView.focus");
+            },
+        ),
+    );
 
     context.subscriptions.push(
         connectToHubCommand,
         uploadProgramCommand,
+        vscode.window.registerWebviewViewProvider(
+            LiveDataViewProvider.viewType,
+            provider,
+            { webviewOptions: { retainContextWhenHidden: true } },
+        ),
     );
 }
 
@@ -133,25 +185,42 @@ export async function deactivate() {
     await onDeactivate();
 }
 
-async function performUploadProgram(slotId: number, progress?: vscode.Progress<{ increment: number }>) {
-    const currentlyOpenTabFileUri = vscode.window.activeTextEditor?.document.uri;
-    const currentlyOpenTabFilePath = vscode.window.activeTextEditor?.document.fileName;
+async function performUploadProgram(
+    slotId: number,
+    progress?: vscode.Progress<{ increment: number }>,
+) {
+    const currentlyOpenTabFileUri =
+        vscode.window.activeTextEditor?.document.uri;
+    const currentlyOpenTabFilePath =
+        vscode.window.activeTextEditor?.document.fileName;
     const config = vscode.workspace.getConfiguration();
 
     if (currentlyOpenTabFilePath && currentlyOpenTabFileUri) {
         const logger = getLogger();
-        const currentlyOpenTabFileName = path.basename(currentlyOpenTabFilePath).replace(path.extname(currentlyOpenTabFilePath), "");
+        const currentlyOpenTabFileName = path
+            .basename(currentlyOpenTabFilePath)
+            .replace(path.extname(currentlyOpenTabFilePath), "");
         const assembledFile = assembleFile(currentlyOpenTabFileUri.fsPath);
-        const isSaveFileToUploadIn = config.get<boolean>("legoSpikePrimeMindstorms.saveFileToUpload");
-        const customPreprocessorPath = config.get<string>("legoSpikePrimeMindstorms.customPrepocessorPath");
+        const isSaveFileToUploadIn = config.get<boolean>(
+            "legoSpikePrimeMindstorms.saveFileToUpload",
+        );
+        const customPreprocessorPath = config.get<string>(
+            "legoSpikePrimeMindstorms.customPrepocessorPath",
+        );
         let assembledFilePath = isSaveFileToUploadIn
-            ? path.join(path.dirname(currentlyOpenTabFilePath), `${currentlyOpenTabFileName}.assembled.py`)
+            ? path.join(
+                path.dirname(currentlyOpenTabFilePath),
+                `${currentlyOpenTabFileName}.assembled.py`,
+            )
             : path.join(os.tmpdir(), `${v7()}.py`);
 
         fs.writeFileSync(assembledFilePath, assembledFile!, "utf8");
 
         if (customPreprocessorPath) {
-            const preprocessedFilePath = await executeCustomPreprocessor(customPreprocessorPath, assembledFilePath);
+            const preprocessedFilePath = await executeCustomPreprocessor(
+                customPreprocessorPath,
+                assembledFilePath,
+            );
 
             if (preprocessedFilePath !== assembledFilePath) {
                 if (!isSaveFileToUploadIn) {
@@ -170,7 +239,8 @@ async function performUploadProgram(slotId: number, progress?: vscode.Progress<{
 
         let compileResult: mpy.CompileResult | undefined;
         if (config.get("legoSpikePrimeMindstorms.compileBeforeUpload")) {
-            compileResult = await mpy.compile(path.basename(assembledFilePath),
+            compileResult = await mpy.compile(
+                path.basename(assembledFilePath),
                 fs.readFileSync(assembledFilePath).toString("utf-8"),
                 [],
                 undefined,
@@ -185,12 +255,7 @@ async function performUploadProgram(slotId: number, progress?: vscode.Progress<{
         }
 
         const data = compileResult?.mpy ?? fs.readFileSync(assembledFilePath);
-        await uploadProgramToHub(
-            data,
-            slotId,
-            !!compileResult?.mpy,
-            progress,
-        );
+        await uploadProgramToHub(data, slotId, !!compileResult?.mpy, progress);
 
         // Remove temp file if needed
         if (customPreprocessorPath || !isSaveFileToUploadIn) {
@@ -203,7 +268,6 @@ async function performUploadProgram(slotId: number, progress?: vscode.Progress<{
         }
     }
 }
-
 
 /**
  * The provided file should be assembled by replacing the import statements with the content of the imported local python file.
@@ -226,17 +290,22 @@ function assembleFile(filePath: string): Uint8Array | undefined {
 
             const match = line.match(pattern);
 
-            if (!match?.[1])
-                continue;
+            if (!match?.[1]) continue;
 
             let includePath = match[1] + ".py";
             includePath = path.resolve(path.dirname(filePath), includePath);
             if (!fs.existsSync(includePath)) {
-                vscode.window.showWarningMessage("File: " + includePath + " not found");
+                vscode.window.showWarningMessage(
+                    "File: " + includePath + " not found",
+                );
                 continue;
             }
             assembledLines.splice(index, 1);
-            if ((includedFiles.some(includedFile => includedFile === includePath)))
+            if (
+                includedFiles.some(
+                    (includedFile) => includedFile === includePath,
+                )
+            )
                 continue;
             try {
                 startLine = index;
@@ -248,7 +317,9 @@ function assembleFile(filePath: string): Uint8Array | undefined {
                 index--;
             }
             catch (includeError) {
-                vscode.window.showErrorMessage("Error reading included file:" + includeError);
+                vscode.window.showErrorMessage(
+                    "Error reading included file:" + includeError,
+                );
             }
         }
 
@@ -275,7 +346,10 @@ function assembleFile(filePath: string): Uint8Array | undefined {
  * @param filePath - The path to the input file to be preprocessed.
  * @returns A promise that resolves with the path to the preprocessed output file, or rejects if the preprocessor fails.
  */
-function executeCustomPreprocessor(customPreprocessorPath: string, filePath: string): Promise<string> {
+function executeCustomPreprocessor(
+    customPreprocessorPath: string,
+    filePath: string,
+): Promise<string> {
     return new Promise((resolve, reject) => {
         if (!customPreprocessorPath) {
             resolve(filePath);
@@ -290,21 +364,27 @@ function executeCustomPreprocessor(customPreprocessorPath: string, filePath: str
             {
                 stdio: [
                     fs.openSync(filePath, "r"), // stdin
-                    fs.openSync(preprocessedFilePath, "w"),   // stdout
-                    "pipe",   // stderr
+                    fs.openSync(preprocessedFilePath, "w"), // stdout
+                    "pipe", // stderr
                 ],
             },
         );
 
         child.stderr?.on("data", (data) => {
             console.error(`Custom preprocessor error: ${data}`);
-            vscode.window.showErrorMessage(`Custom preprocessor error: ${data}`);
+            vscode.window.showErrorMessage(
+                `Custom preprocessor error: ${data}`,
+            );
         });
         child.on("close", (code) => {
             if (code !== 0) {
                 console.error(`Custom preprocessor exited with code ${code}`);
-                vscode.window.showErrorMessage(`Custom preprocessor exited with code ${code}`);
-                reject(new Error(`Custom preprocessor exited with code ${code}`));
+                vscode.window.showErrorMessage(
+                    `Custom preprocessor exited with code ${code}`,
+                );
+                reject(
+                    new Error(`Custom preprocessor exited with code ${code}`),
+                );
             }
             else {
                 resolve(preprocessedFilePath);
