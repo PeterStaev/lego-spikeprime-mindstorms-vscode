@@ -1,5 +1,9 @@
 # Change Log
 
+## Unreleased
+
+- Fix truncated Bluetooth console output and program progress notifications that remain open after a program stops immediately after starting.
+
 ## 3.1.0 - 2025-06-22
 
 - Migrate to a different BLE package for better support.

@@ -6,6 +6,7 @@ import {
 
 import * as vscode from "vscode";
 
+import { MessageFrameDecoder } from "../message-frame-decoder";
 import { InfoRequestMessage } from "../messages/info-request-message";
 import { InfoResponseMessage } from "../messages/info-response-message";
 import { setTimeoutAsync } from "../utils";
@@ -28,6 +29,7 @@ export class BleClient extends BaseClient {
     private _peripheral: Peripheral | undefined;
     private _rxCharacteristic: Characteristic | undefined;
     private _txCharacteristic: Characteristic | undefined;
+    private readonly _messageFrameDecoder = new MessageFrameDecoder();
 
     public async list() {
         const result: vscode.QuickPickItem[] = [];
@@ -51,6 +53,7 @@ export class BleClient extends BaseClient {
     }
 
     public async connect(peripheralUuid: string) {
+        this._messageFrameDecoder.reset();
         this._peripheral = await noble.connectAsync(peripheralUuid);
         this._peripheral.on("disconnect", this.onDisconnect.bind(this));
 
@@ -68,7 +71,7 @@ export class BleClient extends BaseClient {
         this._rxCharacteristic = characteristics[1];
 
         this._rxCharacteristic.subscribe();
-        this._rxCharacteristic.on("data", this.onData.bind(this));
+        this._rxCharacteristic.on("data", this.onBleData.bind(this));
 
         await setTimeoutAsync(() => { /* noop */ }, 250); // HACK: This seems to be needed on Windows to wait for the BLE stack to be ready
         this._infoResponse = await this.sendMessage<InfoRequestMessage, InfoResponseMessage>(new InfoRequestMessage(), InfoResponseMessage);
@@ -85,6 +88,7 @@ export class BleClient extends BaseClient {
     }
 
     protected onDisconnect() {
+        this._messageFrameDecoder.reset();
         this._rxCharacteristic?.unsubscribe();
         this._rxCharacteristic?.removeAllListeners("data");
 
@@ -93,5 +97,11 @@ export class BleClient extends BaseClient {
         this._txCharacteristic = undefined;
 
         super.onDisconnect();
+    }
+
+    private onBleData(data: Uint8Array) {
+        for (const frame of this._messageFrameDecoder.decode(data)) {
+            this.onData(frame);
+        }
     }
 }
